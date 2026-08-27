@@ -1,0 +1,282 @@
+================================================================================
+  MOROWALI JUARA COMMAND CENTER - PENJELASAN KODE (CODEBASE OVERVIEW)
+================================================================================
+  Total: aplikasi Laravel 13 / PHP 8.5 / MySQL 8.4, UI Bahasa Indonesia,
+  Tailwind CSS 4, Alpine.js, Chart.js, Leaflet.
+
+--------------------------------------------------------------------------------
+1.  APA APLIKASI INI
+--------------------------------------------------------------------------------
+Sebuah dashboard pemantauan (command center) untuk Kabupaten Morowali yang
+menggabungkan data 3 sektor ke dalam satu halaman kendali:
+
+  - PENDIDIKAN  (Sekolah SD/SMP, guru, siswa, sarana)
+  - KETERTIBAN  (Polsek, Tipkamtikmas, Poskamling, Pasar, Kelurahan/Desa)
+  - KESEHATAN   (Puskesmas, Pustu, Rumah Sakit, Posyandu, dokter/perawat/bidan)
+
+Data disimpan sepenuhnya di database (bukan hardcoded). Dashboard menampilkan
+statistik, grafik (Chart.js), dan peta interaktif (Leaflet + marker cluster).
+
+--------------------------------------------------------------------------------
+2.  TEKNOLOGI & VERSI
+--------------------------------------------------------------------------------
+  - Laravel 13, PHP 8.5
+  - MySQL 8.4 (database `db_mjcc`, user `root` / pass `2121`)
+  - Tailwind CSS v4 (PostCSS, tanpa tailwind.config.js)
+  - Vite 8 untuk bundling frontend
+  - Alpine.js 3.16 (interaktivitas UI)
+  - Chart.js 4.5 (grafik)
+  - Leaflet 1.9 + leaflet.markercluster 1.5 (peta)
+  - Pest / PHPUnit untuk testing
+
+--------------------------------------------------------------------------------
+3.  STRUKTUR DIREKTORI UTAMA
+--------------------------------------------------------------------------------
+  app/
+    Console/            (perintah artisan - kosong)
+    Http/
+      Controllers/      Semua controller
+        Auth/AuthController.php
+        DashboardController.php            -> Beranda (overview)
+        EducationDashboardController.php   -> Dashboard Pendidikan
+        SecurityDashboardController.php    -> Dashboard Ketertiban
+        HealthDashboardController.php      -> Dashboard Kesehatan
+        MapController.php                  -> Peta Gabungan
+        SchoolController.php, PolsekController.php, TipkamtikmasController.php,
+        PoskamlingController.php, MarketController.php, HealthFacilityController.php,
+        KecamatanController.php, KelurahanController.php, SubjectController.php,
+        UserController.php, ProfileController.php
+        Controller.php                     -> base (memakai trait AuthorizesRequests)
+      Requests/         21 Form Request (validasi + otorisasi store/update)
+        Concerns/ValidatesCoordinates.php  (rule validasi lat/long)
+      Models/            10 model Eloquent
+      Policies/          10 policy (otorisasi per model)
+      Support/Access.php Matriks role terpusat
+      Providers/
+        AppServiceProvider.php  (Blade::if canwrite, View composer, dll)
+    Services/
+      DashboardService.php            (agregasi data Beranda)
+      EducationDashboardService.php
+      SecurityDashboardService.php
+      HealthDashboardService.php
+      MapService.php                  (data peta gabungan semua sektor)
+  database/
+    factories/          10 factory
+    migrations/         skema tabel + pivot school_subject
+    seeders/            seeder data contoh (deterministik) + UserSeeder
+  resources/
+    css/app.css         Tailwind 4 + import CSS Leaflet/markercluster
+    js/
+      app.js            registrasi Alpine (jam, sidebar, dropdown, notifikasi,
+                        konfirmasi, komponen kecamatan-kelurahan)
+      charts.js         helper pembuat grafik (bar, stacked, doughnut, pie,
+                        polar, horizontal)
+      maps.js           setup Leaflet + marker cluster + renderMarkers
+    views/              Blade (layouts, components, auth, dashboard, edu,
+                        security, health, master, maps, users, profile)
+  routes/web.php        semua route web
+  tests/                Pest feature tests
+
+--------------------------------------------------------------------------------
+4.  DATA & MODEL
+--------------------------------------------------------------------------------
+Model utama dan relasinya (semua memakai SoftDeletes kecuali User/Subject):
+
+  User            : name, email, password, role (admin/operator/viewer)
+  Kecamatan       : name, code, deskripsi, lat/long, is_active
+      hasMany -> Kelurahan, School, Polsek, Tipkamtikmas, Poskamling,
+                 Market, HealthFacility
+  Kelurahan       : belongsTo Kecamatan; population, status
+  School          : belongsTo Kecamatan + Kelurahan; belongsToMany Subject
+      (pivot school_subject); SD/SMP, npsn, lat/long, kondisi, jumlah
+      siswa (male/female), guru, kelas, kapasitas, persentase sarana
+      (perpustakaan, lab IPA, lab komputer, ruang guru, toilet, tempat ibadah)
+  Subject         : nama mata pelajaran
+  Polsek          : name, personnel_count, poskamling_count, lat/long, status
+  Tipkamtikmas    : title, status, lat/long (belongs to kecamatan + kelurahan)
+  Poskamling      : name, is_active, lat/long
+  Market (Pasar)  : name, status, lat/long
+  HealthFacility  : TYPE_PUSKESMAS/PUSTU/RS/POSYANDU; beds, doctors, nurses,
+                    midwives, status, phone, deskripsi
+
+Catatan: koordinat lat/long tersimpan deterministik dari seeder (bukan acak
+per-render), sehingga peta konsisten antar halaman.
+
+--------------------------------------------------------------------------------
+5.  OTOMATISASI HAK AKSES (ROLE)
+--------------------------------------------------------------------------------
+Tiga role, dimusatkan di `app/Support/Access.php` dan model `User`:
+
+  - ADMIN    : akses penuh, termasuk kelola pengguna (users) dan kecamatan.
+  - OPERATOR : boleh menulis data operasional (sekolah, polsek, pasar, dll)
+               TAPI tidak boleh kelola users dan tidak boleh menulis kecamatan.
+  - VIEWER   : read-only (hanya melihat dashboard & data).
+
+Lapisan penerapan (berlapis/defense-in-depth):
+  1. POLICY   : App\Policies\*Policy. BaseDataPolicy memanggil
+                Access::canWrite(resource). Kecamatan masuk ADMIN_ONLY.
+  2. CONTROLLER: $this->authorize(...) pada index/create/store/show/edit/
+                update/destroy (trait AuthorizesRequests di base Controller).
+  3. FORM REQUEST: authorize() pada tiap Store/Update Request memanggil
+                user->can('create'/'update', ...).
+  4. VIEW     : @canwrite('resource') menyembunyikan tombol Tambah/Edit/Hapus.
+
+Blade directive `@canwrite` didaftarkan di AppServiceProvider:
+  Blade::if('canwrite', fn ($r) => Access::canWrite(auth()->user(), $r));
+  (Default `@canwrite('kelurahan')` = operator BOLEH tulis;
+   `@canwrite('kecamatan')` = hanya admin.)
+
+--------------------------------------------------------------------------------
+6.  ROUTE (routes/web.php)
+--------------------------------------------------------------------------------
+Semua route di bawah middleware 'auth' (kecuali login/logout):
+
+  GET  /                    -> redirect ke dashboard
+  GET/POST /login           -> otentikasi (guest)
+  POST /logout              -> logout (auth)
+
+  GET /dashboard            Beranda (overview)
+  GET /education            Dashboard Pendidikan
+  resource /education/schools
+  GET /security             Dashboard Ketertiban
+  resource /security/polseks
+  resource /security/tipkamtikmas
+  resource /security/poskamlings
+  resource /security/markets
+  GET /health               Dashboard Kesehatan
+  resource /health/facilities   (param: health_facility)
+  GET /maps                 Peta Gabungan
+  resource /master/kecamatans
+  resource /master/kelurahan   (names: master.kelurahans)
+  resource /master/subjects
+  GET /api/kelurahans/by-kecamatan   (JSON dropdown berantai)
+  resource /users           (admin only via policy)
+  GET/PUT /profile          (profil)
+  PUT /profile/password     (ganti password)
+
+--------------------------------------------------------------------------------
+7.  DASHBOARD & SERVICE
+--------------------------------------------------------------------------------
+Setiap controller dashboard memanggil service yang mengagregasi data:
+
+  DashboardService         -> overviewStats(), comparisonChart(),
+                              infraComposition(), studentChart(),
+                              healthWorkforceChart(), topSekolah(),
+                              topPoskamling(), topKesehatan()
+  EducationDashboardService-> statistics(), studentPerKecamatan(),
+                              teacherRatio(), table(), facilityProgress(), map()
+  SecurityDashboardService -> statistics(), compareChart(),
+                              poskamlingDistribution(), kelurahanPerKecamatan(),
+                              polsekTable(), map()
+  HealthDashboardService   -> statistics(), workforcePerKecamatan(),
+                              facilityProportion(), capacityPerKecamatan(),
+                              table(), map()
+
+Data grafik/peta dikirim ke view sebagai satu variabel `$dashboardData`
+kemudian di-render client-side oleh Chart.js / Leaflet lalu di-@json.
+
+PENTING: Blade directive `@json([...])` (array inline dengan key `=>`)
+tidak di-parse stabil oleh Blade dan dapat terpotong. Karena itu data
+dirakit di controller menjadi array lalu dipakai `@json($dashboardData)`,
+bukan `@json([...])`.
+
+--------------------------------------------------------------------------------
+8.  FRONTEND
+--------------------------------------------------------------------------------
+  resources/css/app.css
+    - `@import "tailwindcss";`
+    - import CSS Leaflet & markercluster
+    - tema custom (fond, warna emerald/blue)
+
+  resources/js/app.js
+    - mengimpor app.css, charts.js, maps.js
+    - mendaftarkan komponen/data Alpine:
+        liveClock (jam), sidebarNav, dropdown, notifications, confirmDialog
+    - handler global [data-confirm] untuk konfirmasi hapus
+    - mendaftarkan `kecamatanKelurahan` via document.addEventListener
+      ('alpine:init', ...) di dalam @once @push('scripts')
+
+  resources/js/charts.js -> window.Mjcc.charts.* helper grafik
+  resources/js/maps.js   -> window.Mjcc.maps.* (L, categoryConfig, createMap,
+                            renderMarkers)
+
+  Build: `npm run build` (produksi) / `npm run dev` (dev, hot reload).
+  Jika perubahan frontend tidak terlihat, jalankan salah satu perintah di atas.
+
+--------------------------------------------------------------------------------
+9.  VIEW & LAYOUT
+--------------------------------------------------------------------------------
+  layouts/app.blade.php   - layout utama ber-session auth:
+      sidebar gelap + header live (jam), modals, notifikasi flash.
+  layouts/guest.blade.php - layout login.
+
+  Komponen reusable (resources/views/components):
+      stat-card, card, alert, button, input, select (prop `selected`),
+      badge, page-title, empty-state, pagination, filter-bar,
+      kecamatan-kelurahan (dropdown berantai dinamis via Alpine + AJAX
+      ke api.kelurahans.by-kecamatan).
+
+  Halaman per sektor + CRUD untuk tiap resource.
+  Semua label/tulisan memakai Bahasa Indonesia.
+
+  Variabel bersama ($currentUser, $flashMessages) disediakan lewat
+  View::composer('*') di AppServiceProvider; $sidebarStats lewat
+  View::composer('layouts.app').
+
+--------------------------------------------------------------------------------
+10. TESTING (Pest)
+--------------------------------------------------------------------------------
+  tests/Pest.php mengaktifkan trait RefreshDatabase untuk Feature tests
+  (database :memory: sqlite). Migration berjalan otomatis per test.
+  phpunit.xml memakai DB_CONNECTION=sqlite & DB_DATABASE=:memory:.
+
+  Test yang ada:
+    tests/Feature/ExampleTest.php        - redirect guest, halaman login
+    tests/Feature/AuthTest.php           - login sukses/gagal, logout
+    tests/Feature/ViewSmokeTest.php      - merender 36 URL utama (200)
+    tests/Feature/AuthorizationTest.php  - matriks role (admin/operator/viewer)
+
+  (12 test, 61 assertions total)
+
+  Menjalankan:  php artisan test --compact
+                vendor/bin/pest
+  Uji sebaris:  php artisan test --filter=NamaTest
+
+--------------------------------------------------------------------------------
+11. QUALITY TOOLING
+--------------------------------------------------------------------------------
+  - Laravel Pint:   vendor/bin/pint app/Http/Controllers app/Providers tests
+                    (catatan: opsi `--dirty` butuh git; repo ini bukan git)
+  - Lazy loading dimatikan saat non-produksi (Model::preventLazyLoading)
+    di AppServiceProvider - melindungi dari query N+1.
+
+--------------------------------------------------------------------------------
+12. CARA MENJALANKAN
+--------------------------------------------------------------------------------
+  1. Siapkan DB MySQL `db_mjcc` (user root / pass 2121) - lihat .env.
+  2. composer install
+  3. cp .env / isi APP_NAME="Morowali Juara Command Center",
+     APP_LOCALE=id, APP_FAKER_LOCALE=id_ID
+  4. php artisan key:generate
+  5. php artisan migrate --seed   (atau migrate:fresh --seed)
+  6. npm install && npm run build
+  7. php artisan serve
+  8. Login (dibuat oleh UserSeeder):
+       admin@morowali.go.id  / password  (admin)
+       operator@morowali.go.id / password (operator)
+       viewer@morowali.go.id  / password  (viewer)
+     Plus 6 akun demo: budi@, siti@, agus@ (operator),
+     dewi@, rudi@ (viewer), nur@ (admin) - semuanya / password.
+
+  Catatan: seeder membuat user admin/operator/viewer + data contoh per sektor.
+
+--------------------------------------------------------------------------------
+13. CATATAN / KONVENSI
+--------------------------------------------------------------------------------
+  - Metode (method) dinamai deskriptif (mis. isRegisteredForDiscounts).
+  - Gunakan type hint & return type eksplisit; enum key berbentuk TitleCase.
+  - Utamakan route bernama & helper route().
+  - Jangan menambah komentar berlebihan; pakai PHPDoc utk logika kompleks.
+  - Penambahan app harus mengikuti struktur direktori yang ada.
+  - Perubahan PHP -> jalankan Pint sebelum finalisasi.
+================================================================================

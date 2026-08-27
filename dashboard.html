@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOROWALI JUARA COMMAND CENTER</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --emerald:#10b981;--emerald-dark:#059669;--emerald-deeper:#047857;
+            --emerald-light:#d1fae5;--emerald-50:#ecfdf5;
+            --blue:#3b82f6;--blue-dark:#2563eb;--blue-deeper:#1d4ed8;
+            --blue-light:#dbeafe;--blue-50:#eff6ff;
+            --white:#ffffff;--gray-50:#f9fafb;--gray-100:#f3f4f6;
+            --gray-200:#e5e7eb;--gray-300:#d1d5db;--gray-600:#4b5563;
+            --gray-700:#374151;--gray-800:#1f2937;--gray-900:#111827;
+            --sidebar-w:260px;--header-h:60px;
+        }
+        html,body{height:100%;overflow:hidden}
+        body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--gray-100);color:var(--gray-800)}
+
+        /* ===== SIDEBAR ===== */
+        .sidebar{
+            position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);
+            background:linear-gradient(180deg,var(--gray-900) 0%,var(--emerald-deeper) 100%);
+            color:var(--white);display:flex;flex-direction:column;z-index:100;
+            box-shadow:4px 0 24px rgba(0,0,0,0.2);
+        }
+        .sidebar-brand{
+            padding:20px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-brand .logo{
+            width:72px;height:72px;border-radius:50%;
+            background:var(--white);
+            display:inline-flex;align-items:center;justify-content:center;
+            margin-bottom:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.2);
+        }
+        .sidebar-brand .logo img{
+            width:100%;height:100%;object-fit:contain;padding:6px;
+        }
+        .sidebar-brand h2{font-size:13px;letter-spacing:2px;text-transform:uppercase;font-weight:800;line-height:1.3}
+        .sidebar-brand small{font-size:10px;opacity:0.6;letter-spacing:1px}
+
+        .sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
+        .sidebar-nav::-webkit-scrollbar{width:4px}
+        .sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:2px}
+
+        .nav-label{
+            padding:16px 20px 6px;font-size:10px;text-transform:uppercase;
+            letter-spacing:2px;opacity:0.4;font-weight:700;
+        }
+        .nav-item{
+            display:flex;align-items:center;gap:12px;padding:12px 20px;
+            cursor:pointer;transition:all 0.2s;border-left:3px solid transparent;
+            color:rgba(255,255,255,0.65);font-size:13px;font-weight:600;
+            text-decoration:none;
+        }
+        .nav-item:hover{background:rgba(255,255,255,0.08);color:var(--white)}
+        .nav-item.active{
+            background:rgba(255,255,255,0.12);color:var(--white);
+            border-left-color:var(--emerald);
+        }
+        .nav-item .nav-icon{width:22px;text-align:center;font-size:16px;flex-shrink:0}
+        .nav-item .nav-badge{
+            margin-left:auto;background:var(--emerald);color:var(--white);
+            font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;
+        }
+
+        .sidebar-footer{
+            padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);
+            font-size:11px;opacity:0.4;text-align:center;letter-spacing:0.5px;
+        }
+
+        /* ===== HEADER ===== */
+        .main-header{
+            position:fixed;top:0;left:var(--sidebar-w);right:0;height:var(--header-h);
+            background:var(--white);border-bottom:2px solid var(--emerald-light);
+            display:flex;align-items:center;justify-content:space-between;
+            padding:0 28px;z-index:90;
+            box-shadow:0 2px 12px rgba(0,0,0,0.04);
+        }
+        .main-header h1{font-size:16px;font-weight:800;color:var(--gray-900);letter-spacing:0.5px}
+        .main-header h1 span{color:var(--emerald)}
+        .header-right{display:flex;align-items:center;gap:20px}
+        .header-clock{text-align:right}
+        .header-clock .time{font-size:20px;font-weight:800;color:var(--emerald-deeper);font-variant-numeric:tabular-nums}
+        .header-clock .date{font-size:11px;color:var(--gray-600)}
+        .live-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse 2s infinite;margin-right:6px}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+        /* ===== CONTENT ===== */
+        .content{
+            margin-left:var(--sidebar-w);margin-top:var(--header-h);
+            height:calc(100vh - var(--header-h));overflow-y:auto;padding:24px;
+        }
+        .content::-webkit-scrollbar{width:6px}
+        .content::-webkit-scrollbar-track{background:var(--gray-100)}
+        .content::-webkit-scrollbar-thumb{background:var(--emerald);border-radius:3px}
+
+        /* ===== SECTION ===== */
+        .page{display:none}
+        .page.active{display:block}
+
+        /* ===== STAT CARDS ===== */
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:16px;margin-bottom:24px}
+        .stat-card{
+            background:var(--white);border-radius:14px;padding:20px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.05);
+            border-left:4px solid var(--emerald);
+            transition:transform 0.2s,box-shadow 0.2s;position:relative;overflow:hidden;
+        }
+        .stat-card::after{
+            content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;
+            border-radius:50%;opacity:0.06;
+        }
+        .stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,0.1)}
+        .stat-card.blue{border-left-color:var(--blue)}
+        .stat-card.green{border-left-color:var(--emerald)}
+        .stat-card::after{background:var(--emerald)}
+        .stat-card.blue::after{background:var(--blue)}
+        .stat-card .stat-icon{
+            width:44px;height:44px;border-radius:12px;
+            display:flex;align-items:center;justify-content:center;
+            font-size:20px;margin-bottom:10px;
+        }
+        .stat-card .stat-icon.green{background:var(--emerald-light);color:var(--emerald-dark)}
+        .stat-card .stat-icon.blue{background:var(--blue-light);color:var(--blue-dark)}
+        .stat-card .stat-value{font-size:26px;font-weight:800;color:var(--gray-900);line-height:1}
+        .stat-card .stat-label{font-size:11px;color:var(--gray-600);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px}
+        .stat-card .stat-change{
+            position:absolute;top:16px;right:16px;font-size:11px;font-weight:700;
+            padding:2px 8px;border-radius:6px;
+        }
+        .stat-card .stat-change.up{background:var(--emerald-light);color:var(--emerald-deeper)}
+        .stat-card .stat-change.down{background:#fee2e2;color:#dc2626}
+
+        /* ===== PANELS ===== */
+        .panel-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+        .panel-row.three{grid-template-columns:1fr 1fr 1fr}
+        .panel{
+            background:var(--white);border-radius:14px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.05);overflow:hidden;
+        }
+        .panel-header{
+            padding:14px 20px;font-weight:700;font-size:13px;text-transform:uppercase;
+            letter-spacing:0.5px;border-bottom:2px solid var(--emerald-light);
+            display:flex;align-items:center;gap:8px;color:var(--emerald-deeper);
+        }
+        .panel-header.blue{border-bottom-color:var(--blue-light);color:var(--blue-dark)}
+        .panel-header.dark{border-bottom-color:var(--gray-200);color:var(--gray-800)}
+        .panel-body{padding:20px}
+        .panel-body.no-pad{padding:0}
+        .full-panel{grid-column:1/-1}
+
+        /* ===== MAP ===== */
+        .map-container{height:400px;width:100%}
+        .map-container.short{height:320px}
+
+        /* ===== TABLE ===== */
+        .data-table{width:100%;border-collapse:collapse;font-size:13px}
+        .data-table th{
+            background:var(--emerald-light);color:var(--emerald-deeper);
+            padding:10px 14px;text-align:left;font-weight:700;text-transform:uppercase;
+            font-size:11px;letter-spacing:0.5px;
+        }
+        .data-table th.blue-th{background:var(--blue-light);color:var(--blue-dark)}
+        .data-table td{padding:10px 14px;border-bottom:1px solid var(--gray-200)}
+        .data-table tr:hover td{background:var(--gray-50)}
+        .data-table tr:last-child td{border-bottom:none}
+
+        /* ===== BADGES ===== */
+        .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+        .badge-green{background:var(--emerald-light);color:var(--emerald-deeper)}
+        .badge-blue{background:var(--blue-light);color:var(--blue-dark)}
+        .badge-red{background:#fee2e2;color:#dc2626}
+
+        /* ===== CHART ===== */
+        .chart-wrap{position:relative;height:300px}
+        .chart-wrap.tall{height:360px}
+
+        /* ===== PROGRESS BAR ===== */
+        .progress-row{margin-bottom:14px}
+        .progress-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;font-weight:600}
+        .progress-bar{height:8px;background:var(--gray-200);border-radius:4px;overflow:hidden}
+        .progress-fill{height:100%;border-radius:4px;transition:width 0.8s ease}
+        .progress-fill.green{background:linear-gradient(90deg,var(--emerald),var(--emerald-dark))}
+        .progress-fill.blue{background:linear-gradient(90deg,var(--blue),var(--blue-dark))}
+
+        /* ===== FILTER ===== */
+        .filter-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+        .filter-bar select,.filter-bar input{
+            padding:8px 14px;border:2px solid var(--gray-200);border-radius:8px;
+            font-size:13px;outline:none;transition:border-color 0.2s;background:var(--white);
+        }
+        .filter-bar select:focus,.filter-bar input:focus{border-color:var(--emerald)}
+
+        /* ===== SECTION TITLE ===== */
+        .page-title{
+            font-size:20px;font-weight:800;color:var(--gray-900);
+            margin-bottom:20px;display:flex;align-items:center;gap:10px;
+        }
+        .page-title .title-bar{width:4px;height:24px;border-radius:2px;background:var(--emerald)}
+
+        /* ===== OVERVIEW SPECIFIC ===== */
+        .overview-hero{
+            background:linear-gradient(135deg,var(--emerald-deeper),var(--emerald),var(--blue-dark));
+            border-radius:16px;padding:28px 32px;color:var(--white);margin-bottom:24px;
+            display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;
+        }
+        .overview-hero h2{font-size:22px;font-weight:800;letter-spacing:1px}
+        .overview-hero p{font-size:13px;opacity:0.8;margin-top:4px}
+        .hero-stats{display:flex;gap:32px}
+        .hero-stat{text-align:center}
+        .hero-stat .num{font-size:36px;font-weight:900;line-height:1}
+        .hero-stat .lbl{font-size:11px;opacity:0.75;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+
+        .summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:24px}
+        .summary-card{
+            background:var(--white);border-radius:14px;padding:24px;text-align:center;
+            box-shadow:0 2px 12px rgba(0,0,0,0.05);cursor:pointer;transition:all 0.2s;
+            border-top:4px solid var(--emerald);
+        }
+        .summary-card:nth-child(2){border-top-color:var(--blue)}
+        .summary-card:nth-child(3){border-top-color:var(--emerald-dark)}
+        .summary-card:hover{transform:translateY(-4px);box-shadow:0 8px 25px rgba(0,0,0,0.1)}
+        .summary-card .sc-icon{font-size:36px;margin-bottom:12px}
+        .summary-card h3{font-size:16px;font-weight:800;color:var(--gray-900);margin-bottom:6px}
+        .summary-card .sc-num{font-size:32px;font-weight:900;color:var(--emerald-deeper);line-height:1}
+        .summary-card .sc-desc{font-size:12px;color:var(--gray-600);margin-top:4px}
+        .summary-card .sc-items{display:flex;justify-content:center;gap:16px;margin-top:14px;flex-wrap:wrap}
+        .summary-card .sc-items span{
+            font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;
+            background:var(--gray-100);color:var(--gray-700);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media(max-width:1100px){.panel-row.three{grid-template-columns:1fr 1fr}}
+        @media(max-width:900px){
+            .panel-row{grid-template-columns:1fr}
+            .summary-cards{grid-template-columns:1fr}
+            :root{--sidebar-w:0px}
+            .sidebar{transform:translateX(-100%)}
+            .main-header{left:0}
+            .content{margin-left:0}
+            .stats-grid{grid-template-columns:repeat(2,1fr)}
+        }
+
+        /* ===== LEAFLET POPUP ===== */
+        .leaflet-popup-content-wrapper{border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.15)}
+        .leaflet-popup-content{margin:12px 16px;font-size:13px}
+        .popup-title{font-weight:700;color:var(--emerald-deeper);margin-bottom:4px}
+        .popup-detail{color:var(--gray-600);font-size:12px;line-height:1.6}
+    </style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar">
+    <div class="sidebar-brand">
+        <div class="logo"><img src="logo.png" alt="Morowali Juara"></div>
+        <h2>Morowali Juara<br>Command Center</h2>
+        <small>Dashboard Monitoring</small>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-label">Menu Utama</div>
+        <a class="nav-item active" onclick="switchPage('beranda',this)">
+            <span class="nav-icon">&#9632;</span>Beranda
+        </a>
+        <div class="nav-label">Pemantauan</div>
+        <a class="nav-item" onclick="switchPage('pendidikan',this)">
+            <span class="nav-icon">&#127891;</span>Pendidikan
+            <span class="nav-badge">170</span>
+        </a>
+        <a class="nav-item" onclick="switchPage('ketertiban',this)">
+            <span class="nav-icon">&#128737;</span>Ketertiban
+            <span class="nav-badge">86</span>
+        </a>
+        <a class="nav-item" onclick="switchPage('kesehatan',this)">
+            <span class="nav-icon">&#127973;</span>Kesehatan
+            <span class="nav-badge">251</span>
+        </a>
+        <div class="nav-label">Informasi</div>
+        <a class="nav-item" onclick="switchPage('peta',this)">
+            <span class="nav-icon">&#128506;</span>Peta Gabungan
+        </a>
+    </nav>
+    <div class="sidebar-footer">Morowali Juara &copy; 2026</div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<div class="main-header">
+    <h1>&#9670; <span>MOROWALI</span> JUARA COMMAND CENTER</h1>
+    <div class="header-right">
+        <span><span class="live-dot"></span> LIVE</span>
+        <div class="header-clock">
+            <div class="time" id="clock">--:--:--</div>
+            <div class="date" id="date-display">--</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="content">
+
+<!-- ============================================ -->
+<!-- PAGE: BERANDA -->
+<!-- ============================================ -->
+<div class="page active" id="page-beranda">
+    <div class="overview-hero">
+        <div>
+            <h2>&#127963; KABUPATEN MOROWALI</h2>
+            <p>Ringkasan data seluruh sektor Kabupaten Morowali</p>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat"><div class="num" id="h-total-kec">10</div><div class="lbl">Kecamatan</div></div>
+            <div class="hero-stat"><div class="num" id="h-total-kel">86</div><div class="lbl">Kelurahan</div></div>
+            <div class="hero-stat"><div class="num" id="h-total-pop">295K</div><div class="lbl">Populasi</div></div>
+        </div>
+    </div>
+
+    <div class="summary-cards">
+        <div class="summary-card" onclick="switchPage('pendidikan',document.querySelectorAll('.nav-item')[1])">
+            <div class="sc-icon">&#127891;</div>
+            <h3>Pendidikan</h3>
+            <div class="sc-num" id="ov-total-sekolah">170</div>
+            <div class="sc-desc">Total Sekolah (SD + SMP)</div>
+            <div class="sc-items">
+                <span>128 SD</span><span>42 SMP</span><span>35.800 Siswa</span><span>2.145 Guru</span>
+            </div>
+        </div>
+        <div class="summary-card" onclick="switchPage('ketertiban',document.querySelectorAll('.nav-item')[2])">
+            <div class="sc-icon">&#128737;</div>
+            <h3>Ketertiban</h3>
+            <div class="sc-num" id="ov-total-polsek">9</div>
+            <div class="sc-desc">Total Polsek</div>
+            <div class="sc-items">
+                <span>86 Kelurahan</span><span>142 Tipkamtikmas</span><span>215 Poskamling</span><span>24 Pasar</span>
+            </div>
+        </div>
+        <div class="summary-card" onclick="switchPage('kesehatan',document.querySelectorAll('.nav-item')[3])">
+            <div class="sc-icon">&#127973;</div>
+            <h3>Kesehatan</h3>
+            <div class="sc-num" id="ov-total-faskes">251</div>
+            <div class="sc-desc">Total Fasilitas Kesehatan</div>
+            <div class="sc-items">
+                <span>14 Puskesmas</span><span>3 RS</span><span>38 Pustu</span><span>196 Posyandu</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-row">
+        <div class="panel">
+            <div class="panel-header">&#128202; Perbandingan Sektor per Kecamatan</div>
+            <div class="panel-body"><div class="chart-wrap tall"><canvas id="chart-overview-compare"></canvas></div></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header blue">&#128203; Komposisi Infrastruktur</div>
+            <div class="panel-body"><div class="chart-wrap tall"><canvas id="chart-overview-polar"></canvas></div></div>
+        </div>
+    </div>
+
+    <div class="panel-row">
+        <div class="panel">
+            <div class="panel-header">&#128200; Tren Jumlah Siswa per Kecamatan</div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="chart-overview-stacked"></canvas></div></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header blue">&#128201; Proporsi Tenaga Kesehatan</div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="chart-overview-doughnut"></canvas></div></div>
+        </div>
+    </div>
+
+    <div class="panel-row">
+        <div class="panel full-panel">
+            <div class="panel-header">&#128506; Peta Semua Fasilitas Kab. Morowali</div>
+            <div class="panel-body no-pad"><div id="map-overview" class="map-container"></div></div>
+        </div>
+    </div>
+
+    <div class="panel-row three">
+        <div class="panel">
+            <div class="panel-header">🎓 Top Kecamatan: Sekolah Terbanyak</div>
+            <div class="panel-body" id="top-sekolah"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header blue">🛡️ Top Kecamatan: Poskamling Aktif</div>
+            <div class="panel-body" id="top-poskamling"></div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">🏥 Top Kecamatan: Tenaga Kesehatan</div>
+            <div class="panel-body" id="top-kesehatan"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: PENDIDIKAN -->
+<!-- ============================================ -->
+<div class="page" id="page-pendidikan">
+    <div class="page-title"><div class="title-bar"></div>Pendidikan Kabupaten Morowali</div>
+    <div class="filter-bar">
+        <label style="font-weight:700;font-size:13px">Kecamatan:</label>
+        <select id="filter-kec-pendidikan" onchange="filterPendidikan()">
+            <option value="all">Semua Kecamatan</option>
+        </select>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card green"><div class="stat-icon green">&#127979;</div><div class="stat-value" id="stat-sd">128</div><div class="stat-label">Total SD</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#127979;</div><div class="stat-value" id="stat-smp">42</div><div class="stat-label">Total SMP</div></div>
+        <div class="stat-card green"><div class="stat-icon green">&#128102;</div><div class="stat-value" id="stat-siswa-l">18.240</div><div class="stat-label">Siswa Laki-laki</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#128103;</div><div class="stat-value" id="stat-siswa-p">17.560</div><div class="stat-label">Siswa Perempuan</div></div>
+        <div class="stat-card green"><div class="stat-icon green">&#128105;&#8205;&#127979;</div><div class="stat-value" id="stat-guru">2.145</div><div class="stat-label">Total Guru</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#128218;</div><div class="stat-value" id="stat-mapel">18</div><div class="stat-label">Mata Pelajaran</div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel"><div class="panel-header">&#128202; Siswa per Kecamatan</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-pendidikan-bar"></canvas></div></div></div>
+        <div class="panel"><div class="panel-header blue">&#128200; Rasio Siswa per Guru</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-pendidikan-doughnut"></canvas></div></div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel full-panel"><div class="panel-header">&#128506; Peta Titik Sekolah</div><div class="panel-body no-pad"><div id="map-pendidikan" class="map-container"></div></div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel"><div class="panel-header">&#128203; Data Sekolah per Kecamatan</div><div class="panel-body no-pad" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kecamatan</th><th>SD</th><th>SMP</th><th>Siswa</th><th>Guru</th><th>Kelas</th><th>Daya Tampung</th></tr></thead><tbody id="tabel-pendidikan"></tbody></table></div></div>
+        <div class="panel"><div class="panel-header blue">&#127970; Fasilitas Sekolah</div><div class="panel-body" id="fasilitas-pendidikan"></div></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: KETERTIBAN -->
+<!-- ============================================ -->
+<div class="page" id="page-ketertiban">
+    <div class="page-title"><div class="title-bar"></div>Ketertiban Kabupaten Morowali</div>
+    <div class="filter-bar">
+        <label style="font-weight:700;font-size:13px">Kecamatan:</label>
+        <select id="filter-kec-ketertiban" onchange="filterKetertiban()">
+            <option value="all">Semua Kecamatan</option>
+        </select>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card green"><div class="stat-icon green">&#127969;</div><div class="stat-value" id="stat-kelurahan">86</div><div class="stat-label">Total Kelurahan/Desa</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#128658;</div><div class="stat-value" id="stat-polsek">9</div><div class="stat-label">Total Polsek</div></div>
+        <div class="stat-card green"><div class="stat-icon green">&#9878;</div><div class="stat-value" id="stat-tipkamtikmas">142</div><div class="stat-label">Total Tipkamtikmas</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#128276;</div><div class="stat-value" id="stat-poskamling">215</div><div class="stat-label">Poskamling Aktif</div></div>
+        <div class="stat-card green"><div class="stat-icon green">&#128722;</div><div class="stat-value" id="stat-pasar">24</div><div class="stat-label">Lokasi Pasar</div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel"><div class="panel-header blue">&#128202; Tipkamtikmas & Poskamling</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-ketertiban-bar"></canvas></div></div></div>
+        <div class="panel"><div class="panel-header blue">&#128200; Distribusi Poskamling</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-ketertiban-pie"></canvas></div></div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel full-panel"><div class="panel-header blue">&#128506; Peta Polsek, Kelurahan & Pasar</div><div class="panel-body no-pad"><div id="map-ketertiban" class="map-container"></div></div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel"><div class="panel-header blue">&#128203; Data Polsek</div><div class="panel-body no-pad" style="overflow-x:auto"><table class="data-table"><thead><tr><th class="blue-th">Polsek</th><th class="blue-th">Kecamatan</th><th class="blue-th">Personel</th><th class="blue-th">Poskamling</th><th class="blue-th">Status</th></tr></thead><tbody id="tabel-polsek"></tbody></table></div></div>
+        <div class="panel"><div class="panel-header blue">&#128202; Kelurahan per Kecamatan</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-kelurahan-bar"></canvas></div></div></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: KESEHATAN -->
+<!-- ============================================ -->
+<div class="page" id="page-kesehatan">
+    <div class="page-title"><div class="title-bar"></div>Kesehatan Kabupaten Morowali</div>
+    <div class="filter-bar">
+        <label style="font-weight:700;font-size:13px">Kecamatan:</label>
+        <select id="filter-kec-kesehatan" onchange="filterKesehatan()">
+            <option value="all">Semua Kecamatan</option>
+        </select>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card green"><div class="stat-icon green">&#127973;</div><div class="stat-value" id="stat-puskesmas">14</div><div class="stat-label">Puskesmas</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#127968;</div><div class="stat-value" id="stat-pustu">38</div><div class="stat-label">Pustu</div></div>
+        <div class="stat-card green"><div class="stat-icon green">&#127975;</div><div class="stat-value" id="stat-rs">3</div><div class="stat-label">Rumah Sakit</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#128118;</div><div class="stat-value" id="stat-posyandu">196</div><div class="stat-label">Posyandu</div></div>
+        <div class="stat-card green"><div class="stat-icon green">&#129464;</div><div class="stat-value" id="stat-dokter">45</div><div class="stat-label">Dokter</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#129465;</div><div class="stat-value" id="stat-perawat">210</div><div class="stat-label">Perawat</div></div>
+        <div class="stat-card green"><div class="stat-icon green">&#129328;</div><div class="stat-value" id="stat-bidan">87</div><div class="stat-label">Bidan</div></div>
+        <div class="stat-card blue"><div class="stat-icon blue">&#128717;</div><div class="stat-value" id="stat-tampung">850</div><div class="stat-label">Daya Tampung (Bed)</div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel"><div class="panel-header">&#128202; Tenaga Kesehatan per Kecamatan</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-kesehatan-bar"></canvas></div></div></div>
+        <div class="panel"><div class="panel-header blue">&#128200; Proporsi Fasilitas Kesehatan</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-kesehatan-doughnut"></canvas></div></div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel full-panel"><div class="panel-header">&#128506; Peta Fasilitas Kesehatan</div><div class="panel-body no-pad"><div id="map-kesehatan" class="map-container"></div></div></div>
+    </div>
+    <div class="panel-row">
+        <div class="panel"><div class="panel-header">&#128203; Data Fasilitas Kesehatan</div><div class="panel-body no-pad" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Kecamatan</th><th>Puskesmas</th><th>Pustu</th><th>RS</th><th>Posyandu</th><th>Dokter</th><th>Perawat</th><th>Bidan</th><th>Bed</th></tr></thead><tbody id="tabel-kesehatan"></tbody></table></div></div>
+        <div class="panel"><div class="panel-header blue">&#128202; Daya Tampung per Kecamatan</div><div class="panel-body"><div class="chart-wrap"><canvas id="chart-tampung-bar"></canvas></div></div></div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: PETA GABUNGAN -->
+<!-- ============================================ -->
+<div class="page" id="page-peta">
+    <div class="page-title"><div class="title-bar"></div>Peta Gabungan Seluruh Fasilitas</div>
+    <div class="filter-bar">
+        <label style="font-weight:700;font-size:13px">Tampilkan:</label>
+        <select id="filter-peta-gabungan" onchange="filterPetaGabungan()">
+            <option value="all">Semua Fasilitas</option>
+            <option value="pendidikan">Pendidikan (Sekolah)</option>
+            <option value="ketertiban">Ketertiban (Polsek, Pasar)</option>
+            <option value="kesehatan">Kesehatan (Fasilitas Kesehatan)</option>
+        </select>
+    </div>
+    <div class="panel full-panel">
+        <div class="panel-header dark">&#128506; Peta Gabungan Kabupaten Morowali</div>
+        <div class="panel-body no-pad"><div id="map-gabungan" class="map-container" style="height:calc(100vh - 240px)"></div></div>
+    </div>
+</div>
+
+</div><!-- end content -->
+
+<script>
+// =============================================
+// DATA
+// =============================================
+const kecamatanData = {
+    "Bungku Tengah": {
+        pendidikan: { sd: 22, smp: 8, siswaL: 3840, siswaP: 3620, guru: 420, kelas: 168, tampung: 4200, perpus: 85, labIPA: 60, labKom: 52 },
+        ketertiban: { kelurahan: 16, polsek: 1, tipkamtikmas: 28, poskamling: 42, pasar: 5 },
+        kesehatan: { puskesmas: 3, pustu: 8, rs: 1, posyandu: 38, dokter: 12, perawat: 48, bidan: 18, bed: 250 }
+    },
+    "Bungku Selatan": {
+        pendidikan: { sd: 18, smp: 6, siswaL: 2960, siswaP: 2810, guru: 340, kelas: 132, tampung: 3500, perpus: 72, labIPA: 45, labKom: 38 },
+        ketertiban: { kelurahan: 12, polsek: 1, tipkamtikmas: 22, poskamling: 35, pasar: 3 },
+        kesehatan: { puskesmas: 2, pustu: 6, rs: 0, posyandu: 28, dokter: 6, perawat: 32, bidan: 14, bed: 120 }
+    },
+    "Bungku Timur": {
+        pendidikan: { sd: 14, smp: 4, siswaL: 2100, siswaP: 1980, guru: 260, kelas: 96, tampung: 2800, perpus: 60, labIPA: 35, labKom: 30 },
+        ketertiban: { kelurahan: 10, polsek: 1, tipkamtikmas: 18, poskamling: 28, pasar: 3 },
+        kesehatan: { puskesmas: 2, pustu: 5, rs: 0, posyandu: 24, dokter: 5, perawat: 26, bidan: 10, bed: 80 }
+    },
+    "Bungku Pesisir": {
+        pendidikan: { sd: 12, smp: 4, siswaL: 1800, siswaP: 1720, guru: 220, kelas: 84, tampung: 2400, perpus: 55, labIPA: 30, labKom: 25 },
+        ketertiban: { kelurahan: 8, polsek: 1, tipkamtikmas: 14, poskamling: 22, pasar: 2 },
+        kesehatan: { puskesmas: 1, pustu: 4, rs: 0, posyandu: 20, dokter: 4, perawat: 22, bidan: 8, bed: 60 }
+    },
+    "Lembo": {
+        pendidikan: { sd: 10, smp: 3, siswaL: 1400, siswaP: 1340, guru: 180, kelas: 68, tampung: 1900, perpus: 45, labIPA: 25, labKom: 20 },
+        ketertiban: { kelurahan: 7, polsek: 1, tipkamtikmas: 12, poskamling: 18, pasar: 2 },
+        kesehatan: { puskesmas: 1, pustu: 4, rs: 0, posyandu: 18, dokter: 3, perawat: 18, bidan: 8, bed: 50 }
+    },
+    "Lembo Raya": {
+        pendidikan: { sd: 8, smp: 3, siswaL: 1200, siswaP: 1140, guru: 150, kelas: 56, tampung: 1600, perpus: 38, labIPA: 20, labKom: 18 },
+        ketertiban: { kelurahan: 6, polsek: 0, tipkamtikmas: 10, poskamling: 15, pasar: 2 },
+        kesehatan: { puskesmas: 1, pustu: 3, rs: 0, posyandu: 16, dokter: 2, perawat: 14, bidan: 6, bed: 40 }
+    },
+    "Mori Utara": {
+        pendidikan: { sd: 12, smp: 4, siswaL: 1680, siswaP: 1600, guru: 200, kelas: 78, tampung: 2100, perpus: 50, labIPA: 28, labKom: 22 },
+        ketertiban: { kelurahan: 8, polsek: 1, tipkamtikmas: 14, poskamling: 20, pasar: 2 },
+        kesehatan: { puskesmas: 1, pustu: 4, rs: 1, posyandu: 20, dokter: 4, perawat: 20, bidan: 8, bed: 100 }
+    },
+    "Mori Selatan": {
+        pendidikan: { sd: 10, smp: 3, siswaL: 1360, siswaP: 1300, guru: 165, kelas: 62, tampung: 1800, perpus: 42, labIPA: 22, labKom: 18 },
+        ketertiban: { kelurahan: 7, polsek: 1, tipkamtikmas: 10, poskamling: 15, pasar: 2 },
+        kesehatan: { puskesmas: 1, pustu: 3, rs: 0, posyandu: 16, dokter: 3, perawat: 16, bidan: 7, bed: 45 }
+    },
+    "Petasia": {
+        pendidikan: { sd: 14, smp: 5, siswaL: 2400, siswaP: 2280, guru: 280, kelas: 108, tampung: 3000, perpus: 68, labIPA: 42, labKom: 35 },
+        ketertiban: { kelurahan: 8, polsek: 1, tipkamtikmas: 16, poskamling: 26, pasar: 3 },
+        kesehatan: { puskesmas: 2, pustu: 5, rs: 1, posyandu: 22, dokter: 8, perawat: 32, bidan: 14, bed: 150 }
+    },
+    "Petasia Timur": {
+        pendidikan: { sd: 8, smp: 2, siswaL: 1500, siswaP: 1470, guru: 180, kelas: 64, tampung: 1800, perpus: 38, labIPA: 20, labKom: 15 },
+        ketertiban: { kelurahan: 4, polsek: 1, tipkamtikmas: 8, poskamling: 14, pasar: 2 },
+        kesehatan: { puskesmas: 1, pustu: 4, rs: 0, posyandu: 14, dokter: 5, perawat: 22, bidan: 9, bed: 55 }
+    }
+};
+
+const kecCoords = {
+    "Bungku Tengah":[-3.38,121.85],"Bungku Selatan":[-3.55,121.75],
+    "Bungku Timur":[-3.35,122.05],"Bungku Pesisir":[-3.45,121.65],
+    "Lembo":[-3.15,121.55],"Lembo Raya":[-3.05,121.60],
+    "Mori Utara":[-2.90,121.70],"Mori Selatan":[-3.10,121.80],
+    "Petasia":[-3.25,121.90],"Petasia Timur":[-3.20,122.10]
+};
+
+const kecNames = Object.keys(kecamatanData);
+
+// =============================================
+// UTILITY
+// =============================================
+function fmt(n){return n.toLocaleString('id-ID')}
+function getSum(key,sub){return Object.values(kecamatanData).reduce((s,d)=>s+d[key][sub],0)}
+function jitter(base,range){return base+(Math.random()-0.5)*range}
+
+function populateFilter(id){
+    const sel=document.getElementById(id);
+    kecNames.forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;sel.appendChild(o)});
+}
+populateFilter('filter-kec-pendidikan');
+populateFilter('filter-kec-ketertiban');
+populateFilter('filter-kec-kesehatan');
+
+// PAGE NAVIGATION
+let mapsInit={overview:false,pendidikan:false,ketertiban:false,kesehatan:false,gabungan:false};
+function switchPage(name,el){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    if(el)el.classList.add('active');
+    document.querySelector('.content').scrollTop=0;
+    setTimeout(()=>{
+        if(name==='beranda'&&mapsInit.overview){overviewMap.invalidateSize()}
+        if(name==='pendidikan'){if(mapsInit.pendidikan)mapPendidikan.invalidateSize()}
+        if(name==='ketertiban'){if(mapsInit.ketertiban)mapKetertiban.invalidateSize()}
+        if(name==='kesehatan'){if(mapsInit.kesehatan)mapKesehatan.invalidateSize()}
+        if(name==='peta'){initMapGabungan()}
+    },150);
+}
+
+// CLOCK
+function updateClock(){
+    const now=new Date();
+    document.getElementById('clock').textContent=now.toLocaleTimeString('id-ID');
+    document.getElementById('date-display').textContent=now.toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+setInterval(updateClock,1000);updateClock();
+
+// =============================================
+// CHART CONFIG
+// =============================================
+const emeraldA='rgba(16,185,129,0.8)',emeraldB='rgba(5,150,105,0.8)';
+const blueA='rgba(59,130,246,0.8)',blueB='rgba(37,99,235,0.8)';
+const emeraldLight='rgba(16,185,129,0.15)',blueLight='rgba(59,130,246,0.15)';
+const emeraldBorder='rgba(16,185,129,1)',blueBorder='rgba(59,130,246,1)';
+const chartPalette=['#10b981','#059669','#047857','#3b82f6','#2563eb','#1d4ed8','#6ee7b7','#34d399','#a7f3d0','#60a5fa'];
+const chartDefaults={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11,family:"'Segoe UI',sans-serif"}}}}};
+
+// =============================================
+// BERANDA OVERVIEW
+// =============================================
+// Summary numbers
+document.getElementById('ov-total-sekolah').textContent=fmt(getSum('pendidikan','sd')+getSum('pendidikan','smp'));
+document.getElementById('ov-total-polsek').textContent=fmt(getSum('ketertiban','polsek'));
+document.getElementById('ov-total-faskes').textContent=fmt(getSum('kesehatan','puskesmas')+getSum('kesehatan','pustu')+getSum('kesehatan','rs')+getSum('kesehatan','posyandu'));
+
+// Compare chart
+new Chart(document.getElementById('chart-overview-compare'),{
+    type:'bar',
+    data:{
+        labels:kecNames,
+        datasets:[
+            {label:'Sekolah',data:kecNames.map(k=>kecamatanData[k].pendidikan.sd+kecamatanData[k].pendidikan.smp),backgroundColor:emeraldA,borderColor:emeraldBorder,borderWidth:1},
+            {label:'Tipkamtikmas',data:kecNames.map(k=>kecamatanData[k].ketertiban.tipkamtikmas),backgroundColor:blueA,borderColor:blueBorder,borderWidth:1},
+            {label:'Faskes',data:kecNames.map(k=>kecamatanData[k].kesehatan.puskesmas+kecamatanData[k].kesehatan.pustu+kecamatanData[k].kesehatan.posyandu),backgroundColor:'rgba(110,231,183,0.7)',borderColor:'rgba(110,231,183,1)',borderWidth:1}
+        ]
+    },
+    options:{...chartDefaults,scales:{y:{beginAtZero:true}}}
+});
+
+// Polar chart
+const totalInfra=[
+    getSum('pendidikan','sd')+getSum('pendidikan','smp'),
+    getSum('ketertiban','polsek')+getSum('ketertiban','poskamling')+getSum('ketertiban','pasar'),
+    getSum('kesehatan','puskesmas')+getSum('kesehatan','pustu')+getSum('kesehatan','rs')+getSum('kesehatan','posyandu')
+];
+new Chart(document.getElementById('chart-overview-polar'),{
+    type:'polarArea',
+    data:{
+        labels:['Pendidikan','Ketertiban','Kesehatan'],
+        datasets:[{data:totalInfra,backgroundColor:['rgba(16,185,129,0.6)','rgba(59,130,246,0.6)','rgba(5,150,105,0.6)'],borderColor:['#10b981','#3b82f6','#059669'],borderWidth:2}]
+    },
+    options:{...chartDefaults,plugins:{legend:{position:'right'}}}
+});
+
+// Stacked students chart
+new Chart(document.getElementById('chart-overview-stacked'),{
+    type:'bar',
+    data:{
+        labels:kecNames,
+        datasets:[
+            {label:'Laki-laki',data:kecNames.map(k=>kecamatanData[k].pendidikan.siswaL),backgroundColor:emeraldA},
+            {label:'Perempuan',data:kecNames.map(k=>kecamatanData[k].pendidikan.siswaP),backgroundColor:blueA}
+        ]
+    },
+    options:{...chartDefaults,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}
+});
+
+// Doughnut kesehatan
+new Chart(document.getElementById('chart-overview-doughnut'),{
+    type:'doughnut',
+    data:{
+        labels:['Dokter','Perawat','Bidan'],
+        datasets:[{data:[getSum('kesehatan','dokter'),getSum('kesehatan','perawat'),getSum('kesehatan','bidan')],backgroundColor:[emeraldA,blueA,'rgba(167,243,208,0.8)']}]
+    },
+    options:{...chartDefaults,plugins:{legend:{position:'right'}}}
+});
+
+// Top lists
+function renderTopList(containerId,data,labelKey,valueKey,icon){
+    const el=document.getElementById(containerId);
+    const sorted=[...data].sort((a,b)=>b[valueKey]-a[valueKey]).slice(0,5);
+    el.innerHTML=sorted.map((d,i)=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;${i<sorted.length-1?'border-bottom:1px solid #e5e7eb':''}">
+            <div style="width:28px;height:28px;border-radius:8px;background:${i<3?'#d1fae5':'#f3f4f6'};color:${i<3?'#047857':'#4b5563'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0">${i+1}</div>
+            <div style="flex:1;font-size:13px;font-weight:600">${d[labelKey]}</div>
+            <div style="font-size:14px;font-weight:800;color:#047857">${icon} ${fmt(d[valueKey])}</div>
+        </div>
+    `).join('');
+}
+const sekolahData=kecNames.map(k=>({name:k,total:kecamatanData[k].pendidikan.sd+kecamatanData[k].pendidikan.smp}));
+const posData=kecNames.map(k=>({name:k,total:kecamatanData[k].ketertiban.poskamling}));
+const kesData=kecNames.map(k=>({name:k,total:kecamatanData[k].kesehatan.dokter+kecamatanData[k].kesehatan.perawat+kecamatanData[k].kesehatan.bidan}));
+renderTopList('top-sekolah',sekolahData,'name','total','&#127979;');
+renderTopList('top-poskamling',posData,'name','total','&#128276;');
+renderTopList('top-kesehatan',kesData,'name','total','&#129464;');
+
+// Overview Map
+const mapCenter=[-3.25,121.85],mapZoom=9;
+let overviewMap;
+function initOverviewMap(){
+    if(mapsInit.overview)return;
+    overviewMap=L.map('map-overview').setView(mapCenter,mapZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(overviewMap);
+    const icSchool=L.divIcon({html:'<div style="background:#10b981;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127979;</div>',iconSize:[24,24],iconAnchor:[12,12],className:''});
+    const icPolsek=L.divIcon({html:'<div style="background:#2563eb;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#128658;</div>',iconSize:[24,24],iconAnchor:[12,12],className:''});
+    const icKes=L.divIcon({html:'<div style="background:#059669;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127973;</div>',iconSize:[24,24],iconAnchor:[12,12],className:''});
+    const icRS=L.divIcon({html:'<div style="background:#dc2626;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127975;</div>',iconSize:[26,26],iconAnchor:[13,13],className:''});
+    kecNames.forEach(name=>{
+        const c=kecCoords[name],d=kecamatanData[name];
+        L.marker([jitter(c[0],0.06),jitter(c[1],0.06)],{icon:icSchool}).addTo(overviewMap).bindPopup(`<div class="popup-title">${name}</div><div class="popup-detail">Sekolah: ${d.pendidikan.sd+d.pendidikan.smp} | Siswa: ${fmt(d.pendidikan.siswaL+d.pendidikan.siswaP)}</div>`);
+        if(d.ketertiban.polsek>0) L.marker([jitter(c[0],0.04),jitter(c[1],0.04)],{icon:icPolsek}).addTo(overviewMap).bindPopup(`<div class="popup-title">Polsek ${name}</div><div class="popup-detail">Poskamling: ${d.ketertiban.poskamling} | Tipkamtikmas: ${d.ketertiban.tipkamtikmas}</div>`);
+        if(d.kesehatan.puskesmas>0) L.marker([c[0],c[1]],{icon:icKes}).addTo(overviewMap).bindPopup(`<div class="popup-title">Puskesmas ${name}</div><div class="popup-detail">Dokter: ${d.kesehatan.dokter} | Bed: ${d.kesehatan.bed}</div>`);
+        if(d.kesehatan.rs>0) L.marker([jitter(c[0],0.03),jitter(c[1],0.03)],{icon:icRS}).addTo(overviewMap).bindPopup(`<div class="popup-title">RS ${name}</div><div class="popup-detail">Dokter: ${d.kesehatan.dokter} | Bed: ${d.kesehatan.bed}</div>`);
+    });
+    mapsInit.overview=true;
+}
+initOverviewMap();
+
+// =============================================
+// PENDIDIKAN
+// =============================================
+new Chart(document.getElementById('chart-pendidikan-bar'),{
+    type:'bar',
+    data:{labels:kecNames,datasets:[
+        {label:'Siswa Laki-laki',data:kecNames.map(k=>kecamatanData[k].pendidikan.siswaL),backgroundColor:emeraldA,borderColor:emeraldBorder,borderWidth:1},
+        {label:'Siswa Perempuan',data:kecNames.map(k=>kecamatanData[k].pendidikan.siswaP),backgroundColor:blueA,borderColor:blueBorder,borderWidth:1}
+    ]},options:{...chartDefaults,scales:{y:{beginAtZero:true}}}
+});
+new Chart(document.getElementById('chart-pendidikan-doughnut'),{
+    type:'doughnut',
+    data:{labels:kecNames,datasets:[{data:kecNames.map(k=>kecamatanData[k].pendidikan.guru),backgroundColor:chartPalette}]},
+    options:{...chartDefaults,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:12}}}}
+});
+
+function renderTabelPendidikan(filter){
+    const tbody=document.getElementById('tabel-pendidikan');tbody.innerHTML='';
+    const entries=filter?filter:Object.entries(kecamatanData);
+    const rows=filter?filter:entries.map(([k,v])=>[k,v]);
+    rows.forEach(([name,d])=>{const p=d.pendidikan;
+        tbody.innerHTML+=`<tr><td><strong>${name}</strong></td><td>${fmt(p.sd)}</td><td>${fmt(p.smp)}</td><td>${fmt(p.siswaL+p.siswaP)}</td><td>${fmt(p.guru)}</td><td>${fmt(p.kelas)}</td><td>${fmt(p.tampung)}</td></tr>`;
+    });
+}
+renderTabelPendidikan();
+
+function renderFasilitasPendidikan(){
+    const el=document.getElementById('fasilitas-pendidikan');
+    const facs=[
+        {name:'Perpustakaan',pct:78,cls:'green'},{name:'Laboratorium IPA',pct:52,cls:'blue'},
+        {name:'Laboratorium Komputer',pct:45,cls:'green'},{name:'Ruang Guru',pct:91,cls:'blue'},
+        {name:'WC / Toilet',pct:83,cls:'green'},{name:'Ruang Ibadah',pct:67,cls:'blue'}
+    ];
+    el.innerHTML=facs.map(f=>`<div class="progress-row"><div class="progress-label"><span>${f.name}</span><span>${f.pct}%</span></div><div class="progress-bar"><div class="progress-fill ${f.cls}" style="width:${f.pct}%"></div></div></div>`).join('');
+}
+renderFasilitasPendidikan();
+
+function filterPendidikan(){
+    const val=document.getElementById('filter-kec-pendidikan').value;
+    if(val==='all'){
+        document.getElementById('stat-sd').textContent=fmt(getSum('pendidikan','sd'));
+        document.getElementById('stat-smp').textContent=fmt(getSum('pendidikan','smp'));
+        document.getElementById('stat-siswa-l').textContent=fmt(getSum('pendidikan','siswaL'));
+        document.getElementById('stat-siswa-p').textContent=fmt(getSum('pendidikan','siswaP'));
+        document.getElementById('stat-guru').textContent=fmt(getSum('pendidikan','guru'));
+        renderTabelPendidikan();
+    }else{
+        const d=kecamatanData[val].pendidikan;
+        document.getElementById('stat-sd').textContent=fmt(d.sd);
+        document.getElementById('stat-smp').textContent=fmt(d.smp);
+        document.getElementById('stat-siswa-l').textContent=fmt(d.siswaL);
+        document.getElementById('stat-siswa-p').textContent=fmt(d.siswaP);
+        document.getElementById('stat-guru').textContent=fmt(d.guru);
+        renderTabelPendidikan([[val,kecamatanData[val]]]);
+    }
+}
+
+// =============================================
+// KETERTIBAN
+// =============================================
+new Chart(document.getElementById('chart-ketertiban-bar'),{
+    type:'bar',
+    data:{labels:kecNames,datasets:[
+        {label:'Tipkamtikmas',data:kecNames.map(k=>kecamatanData[k].ketertiban.tipkamtikmas),backgroundColor:emeraldA,borderColor:emeraldBorder,borderWidth:1},
+        {label:'Poskamling Aktif',data:kecNames.map(k=>kecamatanData[k].ketertiban.poskamling),backgroundColor:blueA,borderColor:blueBorder,borderWidth:1}
+    ]},options:{...chartDefaults,scales:{y:{beginAtZero:true}}}
+});
+new Chart(document.getElementById('chart-ketertiban-pie'),{
+    type:'pie',
+    data:{labels:kecNames,datasets:[{data:kecNames.map(k=>kecamatanData[k].ketertiban.poskamling),backgroundColor:chartPalette}]},
+    options:{...chartDefaults,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:12}}}}
+});
+new Chart(document.getElementById('chart-kelurahan-bar'),{
+    type:'bar',
+    data:{labels:kecNames,datasets:[{label:'Kelurahan/Desa',data:kecNames.map(k=>kecamatanData[k].ketertiban.kelurahan),backgroundColor:emeraldLight,borderColor:emeraldBorder,borderWidth:2}]},
+    options:{...chartDefaults,indexAxis:'y',scales:{x:{beginAtZero:true}}}
+});
+
+(function renderPolsekTable(){
+    const tbody=document.getElementById('tabel-polsek');
+    const data=[
+        {n:'Polsek Bungku Tengah',k:'Bungku Tengah',p:45,pos:42},{n:'Polsek Bungku Selatan',k:'Bungku Selatan',p:32,pos:35},
+        {n:'Polsek Bungku Timur',k:'Bungku Timur',p:28,pos:28},{n:'Polsek Bungku Pesisir',k:'Bungku Pesisir',p:25,pos:22},
+        {n:'Polsek Lembo',k:'Lembo',p:22,pos:18},{n:'Polsek Mori Utara',k:'Mori Utara',p:24,pos:20},
+        {n:'Polsek Mori Selatan',k:'Mori Selatan',p:20,pos:15},{n:'Polsek Petasia',k:'Petasia',p:30,pos:26},
+        {n:'Polsek Petasia Timur',k:'Petasia Timur',p:18,pos:14}
+    ];
+    data.forEach(d=>{tbody.innerHTML+=`<tr><td><strong>${d.n}</strong></td><td>${d.k}</td><td>${d.p}</td><td>${d.pos}</td><td><span class="badge badge-green">Aktif</span></td></tr>`});
+})();
+
+function filterKetertiban(){
+    const val=document.getElementById('filter-kec-ketertiban').value;
+    if(val==='all'){
+        document.getElementById('stat-kelurahan').textContent=fmt(getSum('ketertiban','kelurahan'));
+        document.getElementById('stat-polsek').textContent=fmt(getSum('ketertiban','polsek'));
+        document.getElementById('stat-tipkamtikmas').textContent=fmt(getSum('ketertiban','tipkamtikmas'));
+        document.getElementById('stat-poskamling').textContent=fmt(getSum('ketertiban','poskamling'));
+        document.getElementById('stat-pasar').textContent=fmt(getSum('ketertiban','pasar'));
+    }else{
+        const d=kecamatanData[val].ketertiban;
+        document.getElementById('stat-kelurahan').textContent=fmt(d.kelurahan);
+        document.getElementById('stat-polsek').textContent=fmt(d.polsek);
+        document.getElementById('stat-tipkamtikmas').textContent=fmt(d.tipkamtikmas);
+        document.getElementById('stat-poskamling').textContent=fmt(d.poskamling);
+        document.getElementById('stat-pasar').textContent=fmt(d.pasar);
+    }
+}
+
+// =============================================
+// KESEHATAN
+// =============================================
+new Chart(document.getElementById('chart-kesehatan-bar'),{
+    type:'bar',
+    data:{labels:kecNames,datasets:[
+        {label:'Dokter',data:kecNames.map(k=>kecamatanData[k].kesehatan.dokter),backgroundColor:emeraldA,borderColor:emeraldBorder,borderWidth:1},
+        {label:'Perawat',data:kecNames.map(k=>kecamatanData[k].kesehatan.perawat),backgroundColor:blueA,borderColor:blueBorder,borderWidth:1},
+        {label:'Bidan',data:kecNames.map(k=>kecamatanData[k].kesehatan.bidan),backgroundColor:'rgba(167,243,208,0.8)',borderColor:'rgba(167,243,208,1)',borderWidth:1}
+    ]},options:{...chartDefaults,scales:{y:{beginAtZero:true}}}
+});
+new Chart(document.getElementById('chart-kesehatan-doughnut'),{
+    type:'doughnut',
+    data:{labels:['Puskesmas','Pustu','Rumah Sakit','Posyandu'],datasets:[{data:[getSum('kesehatan','puskesmas'),getSum('kesehatan','pustu'),getSum('kesehatan','rs'),getSum('kesehatan','posyandu')],backgroundColor:[emeraldA,blueA,emeraldB,blueB]}]},
+    options:{...chartDefaults,plugins:{legend:{position:'right'}}}
+});
+new Chart(document.getElementById('chart-tampung-bar'),{
+    type:'bar',
+    data:{labels:kecNames,datasets:[{label:'Daya Tampung (Bed)',data:kecNames.map(k=>kecamatanData[k].kesehatan.bed),backgroundColor:emeraldLight,borderColor:emeraldBorder,borderWidth:2}]},
+    options:{...chartDefaults,scales:{y:{beginAtZero:true}}}
+});
+
+(function renderKesehatanTable(){
+    const tbody=document.getElementById('tabel-kesehatan');
+    kecNames.forEach(name=>{const d=kecamatanData[name].kesehatan;
+        tbody.innerHTML+=`<tr><td><strong>${name}</strong></td><td>${d.puskesmas}</td><td>${d.pustu}</td><td>${d.rs}</td><td>${d.posyandu}</td><td>${d.dokter}</td><td>${d.perawat}</td><td>${d.bidan}</td><td>${d.bed}</td></tr>`;
+    });
+})();
+
+function filterKesehatan(){
+    const val=document.getElementById('filter-kec-kesehatan').value;
+    if(val==='all'){
+        document.getElementById('stat-puskesmas').textContent=fmt(getSum('kesehatan','puskesmas'));
+        document.getElementById('stat-pustu').textContent=fmt(getSum('kesehatan','pustu'));
+        document.getElementById('stat-rs').textContent=fmt(getSum('kesehatan','rs'));
+        document.getElementById('stat-posyandu').textContent=fmt(getSum('kesehatan','posyandu'));
+        document.getElementById('stat-dokter').textContent=fmt(getSum('kesehatan','dokter'));
+        document.getElementById('stat-perawat').textContent=fmt(getSum('kesehatan','perawat'));
+        document.getElementById('stat-bidan').textContent=fmt(getSum('kesehatan','bidan'));
+        document.getElementById('stat-tampung').textContent=fmt(getSum('kesehatan','bed'));
+    }else{
+        const d=kecamatanData[val].kesehatan;
+        document.getElementById('stat-puskesmas').textContent=fmt(d.puskesmas);
+        document.getElementById('stat-pustu').textContent=fmt(d.pustu);
+        document.getElementById('stat-rs').textContent=fmt(d.rs);
+        document.getElementById('stat-posyandu').textContent=fmt(d.posyandu);
+        document.getElementById('stat-dokter').textContent=fmt(d.dokter);
+        document.getElementById('stat-perawat').textContent=fmt(d.perawat);
+        document.getElementById('stat-bidan').textContent=fmt(d.bidan);
+        document.getElementById('stat-tampung').textContent=fmt(d.bed);
+    }
+}
+
+// =============================================
+// LEAFLET MAPS
+// =============================================
+const icSchool=L.divIcon({html:'<div style="background:#10b981;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127979;</div>',iconSize:[28,28],iconAnchor:[14,14],className:''});
+const icSMP=L.divIcon({html:'<div style="background:#2563eb;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127979;</div>',iconSize:[28,28],iconAnchor:[14,14],className:''});
+const icPolice=L.divIcon({html:'<div style="background:#2563eb;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#128658;</div>',iconSize:[28,28],iconAnchor:[14,14],className:''});
+const icKel=L.divIcon({html:'<div style="background:#059669;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127969;</div>',iconSize:[26,26],iconAnchor:[13,13],className:''});
+const icPasar=L.divIcon({html:'<div style="background:#f59e0b;color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#128722;</div>',iconSize:[26,26],iconAnchor:[13,13],className:''});
+const icPkm=L.divIcon({html:'<div style="background:#10b981;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127973;</div>',iconSize:[28,28],iconAnchor:[14,14],className:''});
+const icRS=L.divIcon({html:'<div style="background:#dc2626;color:#fff;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127975;</div>',iconSize:[30,30],iconAnchor:[15,15],className:''});
+const icPosy=L.divIcon({html:'<div style="background:#3b82f6;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#128118;</div>',iconSize:[24,24],iconAnchor:[12,12],className:''});
+const icPustu=L.divIcon({html:'<div style="background:#6366f1;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">&#127968;</div>',iconSize:[24,24],iconAnchor:[12,12],className:''});
+
+// MAP PENDIDIKAN
+let mapPendidikan;
+function initMapPendidikan(){
+    if(mapsInit.pendidikan)return;
+    mapPendidikan=L.map('map-pendidikan').setView(mapCenter,mapZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapPendidikan);
+    kecNames.forEach(name=>{
+        const c=kecCoords[name],d=kecamatanData[name].pendidikan;
+        for(let i=0;i<Math.min(d.sd,5);i++){
+            L.marker([jitter(c[0],0.15),jitter(c[1],0.15)],{icon:icSchool}).addTo(mapPendidikan)
+            .bindPopup(`<div class="popup-title">SD - ${name}</div><div class="popup-detail">Kondisi: Baik<br>Kelas: ${d.kelas}<br>Daya Tampung: ${fmt(d.tampung)}<br>Perpustakaan: ${d.perpus}%<br>Lab IPA: ${d.labIPA}%</div>`);
+        }
+        for(let i=0;i<Math.min(d.smp,3);i++){
+            L.marker([jitter(c[0],0.12),jitter(c[1],0.12)],{icon:icSMP}).addTo(mapPendidikan)
+            .bindPopup(`<div class="popup-title">SMP - ${name}</div><div class="popup-detail">Kondisi: Baik<br>Kelas: ${Math.round(d.kelas*0.35)}<br>Daya Tampung: ${fmt(Math.round(d.tampung*0.35))}</div>`);
+        }
+    });
+    mapsInit.pendidikan=true;
+}
+
+// MAP KETERTIBAN
+let mapKetertiban;
+function initMapKetertiban(){
+    if(mapsInit.ketertiban)return;
+    mapKetertiban=L.map('map-ketertiban').setView(mapCenter,mapZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapKetertiban);
+    kecNames.forEach(name=>{
+        const c=kecCoords[name],d=kecamatanData[name].ketertiban;
+        if(d.polsek>0)L.marker([jitter(c[0],0.05),jitter(c[1],0.05)],{icon:icPolice}).addTo(mapKetertiban).bindPopup(`<div class="popup-title">Polsek ${name}</div><div class="popup-detail">Poskamling: ${d.poskamling}<br>Tipkamtikmas: ${d.tipkamtikmas}</div>`);
+        for(let i=0;i<Math.min(d.kelurahan,4);i++)L.marker([jitter(c[0],0.18),jitter(c[1],0.18)],{icon:icKel}).addTo(mapKetertiban).bindPopup(`<div class="popup-title">Kel/Desa - ${name}</div>`);
+        for(let i=0;i<Math.min(d.pasar,3);i++)L.marker([jitter(c[0],0.1),jitter(c[1],0.1)],{icon:icPasar}).addTo(mapKetertiban).bindPopup(`<div class="popup-title">Pasar - ${name}</div>`);
+    });
+    mapsInit.ketertiban=true;
+}
+
+// MAP KESEHATAN
+let mapKesehatan;
+function initMapKesehatan(){
+    if(mapsInit.kesehatan)return;
+    mapKesehatan=L.map('map-kesehatan').setView(mapCenter,mapZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapKesehatan);
+    kecNames.forEach(name=>{
+        const c=kecCoords[name],d=kecamatanData[name].kesehatan;
+        for(let i=0;i<d.puskesmas;i++)L.marker([jitter(c[0],0.08),jitter(c[1],0.08)],{icon:icPkm}).addTo(mapKesehatan).bindPopup(`<div class="popup-title">Puskesmas - ${name}</div><div class="popup-detail">Dokter: ${d.dokter} | Perawat: ${d.perawat}<br>Bidan: ${d.bidan} | Bed: ${d.bed}</div>`);
+        for(let i=0;i<d.rs;i++)L.marker([jitter(c[0],0.05),jitter(c[1],0.05)],{icon:icRS}).addTo(mapKesehatan).bindPopup(`<div class="popup-title">RS - ${name}</div><div class="popup-detail">Bed: ${d.bed}</div>`);
+        for(let i=0;i<Math.min(d.pustu,3);i++)L.marker([jitter(c[0],0.15),jitter(c[1],0.15)],{icon:icPustu}).addTo(mapKesehatan).bindPopup(`<div class="popup-title">Pustu - ${name}</div>`);
+        for(let i=0;i<Math.min(d.posyandu,4);i++)L.marker([jitter(c[0],0.2),jitter(c[1],0.2)],{icon:icPosy}).addTo(mapKesehatan).bindPopup(`<div class="popup-title">Posyandu - ${name}</div>`);
+    });
+    mapsInit.kesehatan=true;
+}
+
+// MAP GABUNGAN
+let mapGabungan;
+function initMapGabungan(){
+    if(mapsInit.gabungan){
+        if(mapGabungan)mapGabungan.invalidateSize();
+        return;
+    }
+    mapGabungan=L.map('map-gabungan').setView(mapCenter,mapZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapGabungan);
+    kecNames.forEach(name=>{
+        const c=kecCoords[name],d=kecamatanData[name];
+        // Schools
+        for(let i=0;i<Math.min(d.pendidikan.sd,3);i++)L.marker([jitter(c[0],0.12),jitter(c[1],0.12)],{icon:icSchool}).addTo(mapGabungan).bindPopup(`<div class="popup-title">SD - ${name}</div><div class="popup-detail">Siswa: ${fmt(d.pendidikan.siswaL+d.pendidikan.siswaP)}</div>`);
+        for(let i=0;i<Math.min(d.pendidikan.smp,2);i++)L.marker([jitter(c[0],0.1),jitter(c[1],0.1)],{icon:icSMP}).addTo(mapGabungan).bindPopup(`<div class="popup-title">SMP - ${name}</div>`);
+        // Polsek
+        if(d.ketertiban.polsek>0)L.marker([jitter(c[0],0.04),jitter(c[1],0.04)],{icon:icPolice}).addTo(mapGabungan).bindPopup(`<div class="popup-title">Polsek ${name}</div>`);
+        // Pasar
+        for(let i=0;i<Math.min(d.ketertiban.pasar,2);i++)L.marker([jitter(c[0],0.08),jitter(c[1],0.08)],{icon:icPasar}).addTo(mapGabungan).bindPopup(`<div class="popup-title">Pasar - ${name}</div>`);
+        // Health
+        if(d.kesehatan.puskesmas>0)L.marker([c[0],c[1]],{icon:icPkm}).addTo(mapGabungan).bindPopup(`<div class="popup-title">Puskesmas - ${name}</div>`);
+        if(d.kesehatan.rs>0)L.marker([jitter(c[0],0.03),jitter(c[1],0.03)],{icon:icRS}).addTo(mapGabungan).bindPopup(`<div class="popup-title">RS - ${name}</div>`);
+        for(let i=0;i<Math.min(d.kesehatan.posyandu,2);i++)L.marker([jitter(c[0],0.15),jitter(c[1],0.15)],{icon:icPosy}).addTo(mapGabungan).bindPopup(`<div class="popup-title">Posyandu - ${name}</div>`);
+    });
+    mapsInit.gabungan=true;
+    setTimeout(()=>mapGabungan.invalidateSize(),200);
+}
+
+function filterPetaGabungan(){/* future: filter map markers by sector */}
+
+// Init maps on page switches
+const observer=new MutationObserver(()=>{
+    document.querySelectorAll('.page.active').forEach(p=>{
+        if(p.id==='page-pendidikan')initMapPendidikan();
+        if(p.id==='page-ketertiban')initMapKetertiban();
+        if(p.id==='page-kesehatan')initMapKesehatan();
+    });
+});
+document.querySelectorAll('.page').forEach(p=>observer.observe(p,{attributes:true,attributeFilter:['class']}));
+</script>
+</body>
+</html>

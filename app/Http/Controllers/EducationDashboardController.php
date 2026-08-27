@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Kecamatan;
+use App\Services\EducationDashboardService;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+class EducationDashboardController extends Controller
+{
+    public function __construct(private readonly EducationDashboardService $service) {}
+
+    public function index(Request $request): View
+    {
+        $kecamatanId = $request->integer('kecamatan', 0) ?: null;
+
+        $stats = $this->service->statistics($kecamatanId);
+        $students = $this->service->studentPerKecamatan($kecamatanId);
+        $teacherRatio = $this->service->teacherRatio($kecamatanId);
+        $table = $this->service->table($kecamatanId);
+        $facilities = $this->service->facilityProgress($kecamatanId);
+        $map = $this->service->map($kecamatanId);
+        $kecamatans = Kecamatan::orderBy('name')->get(['id', 'name']);
+
+        $dashboardData = [
+            'students' => $students,
+            'teacherRatio' => $teacherRatio,
+        ];
+
+        return view('education.dashboard', compact(
+            'stats',
+            'dashboardData',
+            'table',
+            'facilities',
+            'map',
+            'kecamatans',
+            'kecamatanId'
+        ));
+    }
+}
