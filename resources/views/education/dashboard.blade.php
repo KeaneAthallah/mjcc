@@ -28,6 +28,8 @@
         <x-stat-card label="Mata Pelajaran" value="{{ number_format($stats['mapel']) }}" icon="📚" color="red"/>
     </div>
 
+    @include('partials.alert-section', ['alerts' => $alerts])
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <x-card title="Siswa per Kecamatan" icon="🎓">
             <div class="h-72"><canvas id="chart-students"></canvas></div>

@@ -27,6 +27,8 @@
         <x-stat-card label="Pasar" value="{{ number_format($stats['pasar']) }}" icon="🏪" color="teal"/>
     </div>
 
+    @include('partials.alert-section', ['alerts' => $alerts])
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <x-card title="Tipkamtikmas vs Poskamling per Kecamatan" icon="📊" class="lg:col-span-2">
             <div class="h-72"><canvas id="chart-compare"></canvas></div>

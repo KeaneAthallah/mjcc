@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kecamatan;
+use App\Services\AlertService;
 use App\Services\HealthDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class HealthDashboardController extends Controller
 {
-    public function __construct(private readonly HealthDashboardService $service) {}
+    public function __construct(
+        private readonly HealthDashboardService $service,
+        private readonly AlertService $alerts,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -29,13 +33,16 @@ class HealthDashboardController extends Controller
             'capacity' => $capacity,
         ];
 
+        $alerts = $this->alerts->forSector('kesehatan');
+
         return view('health.dashboard', compact(
             'stats',
             'dashboardData',
             'table',
             'map',
             'kecamatans',
-            'kecamatanId'
+            'kecamatanId',
+            'alerts'
         ));
     }
 }

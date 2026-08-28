@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kecamatan;
+use App\Services\AlertService;
 use App\Services\EducationDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class EducationDashboardController extends Controller
 {
-    public function __construct(private readonly EducationDashboardService $service) {}
+    public function __construct(
+        private readonly EducationDashboardService $service,
+        private readonly AlertService $alerts,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -28,6 +32,8 @@ class EducationDashboardController extends Controller
             'teacherRatio' => $teacherRatio,
         ];
 
+        $alerts = $this->alerts->forSector('pendidikan');
+
         return view('education.dashboard', compact(
             'stats',
             'dashboardData',
@@ -35,7 +41,8 @@ class EducationDashboardController extends Controller
             'facilities',
             'map',
             'kecamatans',
-            'kecamatanId'
+            'kecamatanId',
+            'alerts'
         ));
     }
 }

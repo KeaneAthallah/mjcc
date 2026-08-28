@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesSoftDeletes;
 use App\Http\Requests\StoreKecamatanRequest;
 use App\Http\Requests\UpdateKecamatanRequest;
 use App\Models\Kecamatan;
@@ -11,6 +12,15 @@ use Illuminate\View\View;
 
 class KecamatanController extends Controller
 {
+    use HandlesSoftDeletes;
+
+    protected array $softDeleteResource = [
+        'class' => Kecamatan::class,
+        'route' => 'master.kecamatans',
+        'label' => 'kecamatan',
+        'searchColumn' => 'name',
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Kecamatan::class);

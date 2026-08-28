@@ -42,7 +42,6 @@ class EducationDashboardService
     /**
      * Siswa per kecamatan (bar chart: male/female).
      *
-     * @param int|null $kecamatanId
      * @return array{labels: string[], datasets: array<int, array<string, mixed>>}
      */
     public function studentPerKecamatan(?int $kecamatanId = null): array
@@ -167,15 +166,15 @@ class EducationDashboardService
                 return [
                     'id' => $school->id,
                     'name' => $school->name,
-                    'type' => $school->school_type,
+                    'category' => $school->school_type,
                     'latitude' => (float) $school->latitude,
                     'longitude' => (float) $school->longitude,
                     'kecamatan' => $school->kecamatan?->name,
-                    'condition' => $school->condition,
-                    'students' => (int) $school->students_male + (int) $school->students_female,
-                    'teachers' => (int) $school->teachers,
-                    'classes' => (int) $school->classes,
-                    'capacity' => (int) $school->capacity,
+                    'details' => [
+                        'Siswa' => (int) $school->students_male + (int) $school->students_female,
+                        'Guru' => (int) $school->teachers,
+                        'Kondisi' => $school->condition,
+                    ],
                 ];
             })
             ->values();

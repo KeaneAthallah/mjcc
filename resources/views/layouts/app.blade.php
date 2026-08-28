@@ -107,6 +107,10 @@
                    class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('users.*') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
                     <span class="w-[22px] text-center text-base">👤</span>Users
                 </a>
+                <a href="{{ route('audit.index') }}"
+                   class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('audit.*') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
+                    <span class="w-[22px] text-center text-base">📜</span>Log Aktivitas
+                </a>
             @endcan
 
             <a href="{{ route('profile.edit') }}"

@@ -28,6 +28,8 @@
         <x-stat-card label="Tempat Tidur" value="{{ number_format($stats['bed']) }}" icon="🛏️" color="blue"/>
     </div>
 
+    @include('partials.alert-section', ['alerts' => $alerts])
+
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <x-card title="Kapasitas Tempat Tidur per Kecamatan" icon="🛏️">
             <div class="h-72"><canvas id="chart-capacity"></canvas></div>

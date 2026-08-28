@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesSoftDeletes;
 use App\Http\Requests\StoreHealthFacilityRequest;
 use App\Http\Requests\UpdateHealthFacilityRequest;
 use App\Models\HealthFacility;
@@ -12,6 +13,15 @@ use Illuminate\View\View;
 
 class HealthFacilityController extends Controller
 {
+    use HandlesSoftDeletes;
+
+    protected array $softDeleteResource = [
+        'class' => HealthFacility::class,
+        'route' => 'health.facilities',
+        'label' => 'fasilitas kesehatan',
+        'searchColumn' => 'name',
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', HealthFacility::class);

@@ -7,6 +7,7 @@
 
     <x-page-title title="Data Kecamatan" subtitle="Kelola data kecamatan Kabupaten Morowali">
         <x-slot:actions>
+            <x-button href="{{ route('master.kecamatans.trash') }}" variant="ghost" size="sm">🗑️ Sampah</x-button>
             @canwrite('kecamatan')
                 <x-button href="{{ route('master.kecamatans.create') }}" variant="primary" size="sm">+ Tambah Kecamatan</x-button>
             @endcanwrite

@@ -5,12 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\HealthFacility;
 use App\Models\Polsek;
 use App\Models\School;
+use App\Services\AlertService;
 use App\Services\DashboardService;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly DashboardService $dashboard) {}
+    public function __construct(
+        private readonly DashboardService $dashboard,
+        private readonly AlertService $alerts,
+    ) {}
 
     public function index(): View
     {
@@ -66,6 +70,7 @@ class DashboardController extends Controller
 
         return view('dashboard.index', [
             'stats' => $stats,
+            'alerts' => $this->alerts->alerts(),
             'dashboardData' => $dashboardData,
             'topSekolah' => $this->dashboard->topSekolah(),
             'topPoskamling' => $this->dashboard->topPoskamling(),

@@ -10,10 +10,14 @@ use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\Tipkamtikmas;
 use App\Support\Access;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +34,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('login', function (Request $request) {
+            return Limit::perMinute(5)->by(Str::transliterate(
+                Str::lower((string) $request->string('email')).'|'.$request->ip()
+            ));
+        });
+
         Model::preventLazyLoading(! $this->app->isProduction());
 
         Blade::if('canwrite', fn ($resource) => Access::canWrite(auth()->user(), $resource));

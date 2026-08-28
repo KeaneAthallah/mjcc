@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesSoftDeletes;
 use App\Http\Requests\StoreMarketRequest;
 use App\Http\Requests\UpdateMarketRequest;
 use App\Models\Kecamatan;
@@ -12,6 +13,15 @@ use Illuminate\View\View;
 
 class MarketController extends Controller
 {
+    use HandlesSoftDeletes;
+
+    protected array $softDeleteResource = [
+        'class' => Market::class,
+        'route' => 'security.markets',
+        'label' => 'pasar',
+        'searchColumn' => 'name',
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Market::class);

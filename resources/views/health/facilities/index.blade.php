@@ -7,6 +7,7 @@
 
     <x-page-title title="Data Fasilitas Kesehatan" subtitle="Kelola fasilitas dan tenaga kesehatan di Kabupaten Morowali">
         <x-slot:actions>
+            <x-button href="{{ route('health.facilities.trash') }}" variant="ghost" size="sm">🗑️ Sampah</x-button>
             <x-button href="{{ route('health.facilities.create') }}" variant="primary" size="sm">+ Tambah Faskes</x-button>
         </x-slot:actions>
     </x-page-title>

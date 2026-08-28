@@ -37,29 +37,37 @@ statistik, grafik (Chart.js), dan peta interaktif (Leaflet + marker cluster).
     Http/
       Controllers/      Semua controller
         Auth/AuthController.php
-        DashboardController.php            -> Beranda (overview)
-        EducationDashboardController.php   -> Dashboard Pendidikan
-        SecurityDashboardController.php    -> Dashboard Ketertiban
-        HealthDashboardController.php      -> Dashboard Kesehatan
-        MapController.php                  -> Peta Gabungan
+        ActivityLogController.php        -> halaman Log Aktivitas / audit (admin)
+        DashboardController.php          -> Beranda (overview)
+        EducationDashboardController.php -> Dashboard Pendidikan
+        SecurityDashboardController.php  -> Dashboard Ketertiban
+        HealthDashboardController.php    -> Dashboard Kesehatan
+        MapController.php                -> Peta Gabungan
         SchoolController.php, PolsekController.php, TipkamtikmasController.php,
         PoskamlingController.php, MarketController.php, HealthFacilityController.php,
         KecamatanController.php, KelurahanController.php, SubjectController.php,
         UserController.php, ProfileController.php
-        Controller.php                     -> base (memakai trait AuthorizesRequests)
+        Controller.php                   -> base (memakai trait AuthorizesRequests)
+        Concerns/
+          HandlesSoftDeletes.php         -> trait trash/restore/force-hapus
       Requests/         21 Form Request (validasi + otorisasi store/update)
         Concerns/ValidatesCoordinates.php  (rule validasi lat/long)
-      Models/            10 model Eloquent
-      Policies/          10 policy (otorisasi per model)
+      Models/            11 model Eloquent (termasuk ActivityLog)
+        Concerns/
+          LogsActivity.php               -> trait audit trail untuk model data
+      Policies/          11 policy (otorisasi per model, termasuk ActivityLog)
       Support/Access.php Matriks role terpusat
       Providers/
-        AppServiceProvider.php  (Blade::if canwrite, View composer, dll)
+        AppServiceProvider.php  (Blade::if canwrite, View composer,
+        RateLimiter login, disable lazy loading)
     Services/
-      DashboardService.php            (agregasi data Beranda)
+      DashboardService.php        (agregasi data Beranda + cache 60 detik)
+      AlertService.php            (isyarat "Perlu Perhatian" per sektor)
+      ActivityLogService.php      (catat & query log audit)
       EducationDashboardService.php
       SecurityDashboardService.php
       HealthDashboardService.php
-      MapService.php                  (data peta gabungan semua sektor)
+      MapService.php              (data peta gabungan semua sektor)
   database/
     factories/          10 factory
     migrations/         skema tabel + pivot school_subject
@@ -115,6 +123,8 @@ Tiga role, dimusatkan di `app/Support/Access.php` dan model `User`:
 Lapisan penerapan (berlapis/defense-in-depth):
   1. POLICY   : App\Policies\*Policy. BaseDataPolicy memanggil
                 Access::canWrite(resource). Kecamatan masuk ADMIN_ONLY.
+                BaseDataPolicy juga menyediakan `restore` (sama dengan canWrite)
+                dan `forceDelete` (HANYA admin) untuk fitur sampah.
   2. CONTROLLER: $this->authorize(...) pada index/create/store/show/edit/
                 update/destroy (trait AuthorizesRequests di base Controller).
   3. FORM REQUEST: authorize() pada tiap Store/Update Request memanggil
@@ -126,13 +136,18 @@ Blade directive `@canwrite` didaftarkan di AppServiceProvider:
   (Default `@canwrite('kelurahan')` = operator BOLEH tulis;
    `@canwrite('kecamatan')` = hanya admin.)
 
+Perlindungan tambahan pada login:
+  - Rate limiting login (5 percobaan/menit per kombinasi email+IP) lewat
+    RateLimiter::for('login') di AppServiceProvider + middleware
+    'throttle:login' pada POST /login.
+
 --------------------------------------------------------------------------------
 6.  ROUTE (routes/web.php)
 --------------------------------------------------------------------------------
 Semua route di bawah middleware 'auth' (kecuali login/logout):
 
   GET  /                    -> redirect ke dashboard
-  GET/POST /login           -> otentikasi (guest)
+  GET/POST /login           -> otentikasi (guest; POST memakai throttle:login)
   POST /logout              -> logout (auth)
 
   GET /dashboard            Beranda (overview)
@@ -151,8 +166,15 @@ Semua route di bawah middleware 'auth' (kecuali login/logout):
   resource /master/subjects
   GET /api/kelurahans/by-kecamatan   (JSON dropdown berantai)
   resource /users           (admin only via policy)
+  GET /audit                Log Aktivitas / audit (admin only via policy)
   GET/PUT /profile          (profil)
   PUT /profile/password     (ganti password)
+
+Route tambahan tiap resource ber-SoftDeletes (Sekolah, Faskes, Kecamatan,
+Kelurahan, Pasar, Poskamling, Tipkamtikmas):
+  GET    {resource}/trash           -> daftar data terhapus (sampah)
+  PUT    {resource}/{id}/restore    -> pulihkan (perlu izin restore)
+  DELETE {resource}/{id}/force      -> hapus permanen (HANYA admin)
 
 --------------------------------------------------------------------------------
 7.  DASHBOARD & SERVICE
@@ -171,6 +193,21 @@ Setiap controller dashboard memanggil service yang mengagregasi data:
   HealthDashboardService   -> statistics(), workforcePerKecamatan(),
                               facilityProportion(), capacityPerKecamatan(),
                               table(), map()
+
+Agregasi berat pada DashboardService di-cache singkat (60 detik) lewat
+Cache::remember('dashboard.<key>', 60, ...) untuk menghindari ~20 query
+count/sum berulang pada tiap pemuatan Beranda. TTL pendek menjaga data tetap
+segar.
+
+"Perlu Perhatian" (AlertService):
+  - AlertService::alerts()  -> ringkasan isu lintas sektor (critical/warning/info)
+  - AlertService::forSector('pendidikan'|'kesehatan'|'ketertiban')
+    -> isu spesifik untuk dashboard tiap sektor.
+  - Aturan contoh: faskes tanpa tenaga medis (critical), poskamling nonaktif
+    (critical), kondisi gedung sekolah buruk (warning), faskes/tipkamtikmas/
+    pasar berstatus non-aktif (warning).
+  - Dirender sebagai kartu "Perlu Perhatian" di Beranda & tiap dashboard sektor
+    (partial resources/views/partials/alert-section.blade.php).
 
 Data grafik/peta dikirim ke view sebagai satu variabel `$dashboardData`
 kemudian di-render client-side oleh Chart.js / Leaflet lalu di-@json.
@@ -233,25 +270,89 @@ bukan `@json([...])`.
   Test yang ada:
     tests/Feature/ExampleTest.php        - redirect guest, halaman login
     tests/Feature/AuthTest.php           - login sukses/gagal, logout
-    tests/Feature/ViewSmokeTest.php      - merender 36 URL utama (200)
+    tests/Feature/ViewSmokeTest.php      - merender semua URL utama (200),
+                                          termasuk halaman sampah & audit
     tests/Feature/AuthorizationTest.php  - matriks role (admin/operator/viewer)
+    tests/Feature/AuditLogTest.php       - log create, stripping password,
+                                          login audit, akses halaman audit
+    tests/Feature/TrashTest.php          - daftar sampah, restore, hapus
+                                          permanen (admin vs operator)
+    tests/Feature/AlertTest.php          - isyarat sektor (pendidikan/
+                                          kesehatan/ketertiban), dashboard render
 
-  (12 test, 61 assertions total)
+  (28 test, 100 assertions total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest
   Uji sebaris:  php artisan test --filter=NamaTest
 
 --------------------------------------------------------------------------------
-11. QUALITY TOOLING
+  11. JURNAL AUDIT (ACTIVITY LOG)
+-------------------------------------------------------------------------------
+Sistem audit trail mencatat aktivitas penting untuk akuntabilitas:
+
+  Tabel : activity_logs (user_id nullable, action, resource_type,
+          resource_id, old_values/new_values json, ip_address, user_agent,
+          created_at di-index).
+
+  Model : App\Models\ActivityLog
+    - konstanta aksi: login, logout, create, update, delete, restore,
+      force_delete, role_change
+    - description() untuk label ringkas di view.
+
+  Service : App\Services\ActivityLogService
+    - record()/logModel() untuk menulis entri
+    - paginate() dengan filter search/user/action/resource/range tanggal
+
+  Trait  : App\Models\Concerns\LogsActivity
+    - dipakai 10 model data (User, School, HealthFacility, Kecamatan,
+      Kelurahan, Polsek, Market, Poskamling, Tipkamtikmas, Subject)
+    - mencatat otomatis saat created/updated/deleted, serta restored/
+      forceDeleted bila model memakai SoftDeletes (dideteksi via
+      class_uses_recursive + guard SoftDeletes)
+    - men-strip 'password' & 'remember_token' agar tidak pernah masuk log
+    - mengambil user saat ini via request->user() ?? Auth::user()
+
+  Log login/logout : di App\Http\Controllers\Auth\AuthController
+  Halaman /audit   : ActivityLogController + ActivityLogPolicy (admin only),
+                     link sidebar "Log Aktivitas" pada layout app.
+
+  PENTING (bug yang pernah terjadi): akses event statis `static::restored()`
+  pada model TANPA SoftDeletes (mis. User) memicu rekursi boot Eloquent
+  ("may not be called ... while it is being booted"). Solusi: hanya daftarkan
+  listener restored/forceDeleted bila model memakai trait SoftDeletes.
+
+-------------------------------------------------------------------------------
+12. FITUR SAMPAH (TRASH) & HAPUS PERMANEN
+-------------------------------------------------------------------------------
+Semua resource ber-SoftDeletes mendukung pemulihan data terhapus:
+
+  Dengan trait App\Http\Controllers\Concerns\HandlesSoftDeletes, tiap controller
+  ber-SoftDeletes menambahkan aksi:
+    - trash()       -> GET    {resource}/trash (daftar onlyTrashed)
+    - restore()     -> PUT    {resource}/{id}/restore (pulihkan)
+    - forceDestroy()-> DELETE {resource}/{id}/force (hapus permanen)
+
+  Controller mendeklarasikan konfigurasi `$softDeleteResource`:
+    ['class'=>.., 'route'=>.., 'label'=>.., 'searchColumn'=>..]
+
+  Otorisasi (BaseDataPolicy):
+    - restore    : sama dengan canWrite => operator boleh memulihkan.
+    - forceDelete: hanya admin (User::isAdmin()).
+
+  Halaman bersama: resources/views/trash/index.blade.php
+  Tombol "Sampah" ditambahkan di index tiap resource.
+
+-------------------------------------------------------------------------------
+13. QUALITY TOOLING
 --------------------------------------------------------------------------------
-  - Laravel Pint:   vendor/bin/pint app/Http/Controllers app/Providers tests
-                    (catatan: opsi `--dirty` butuh git; repo ini bukan git)
+  - Laravel Pint:   vendor/bin/pint --dirty --format agent (memperbaiki file
+                    yang berubah; repo dikelola dengan git)
   - Lazy loading dimatikan saat non-produksi (Model::preventLazyLoading)
     di AppServiceProvider - melindungi dari query N+1.
 
 --------------------------------------------------------------------------------
-12. CARA MENJALANKAN
+  14. CARA MENJALANKAN
 --------------------------------------------------------------------------------
   1. Siapkan DB MySQL `db_mjcc` (user root / pass 2121) - lihat .env.
   2. composer install
@@ -271,7 +372,7 @@ bukan `@json([...])`.
   Catatan: seeder membuat user admin/operator/viewer + data contoh per sektor.
 
 --------------------------------------------------------------------------------
-13. CATATAN / KONVENSI
+  15. CATATAN / KONVENSI
 --------------------------------------------------------------------------------
   - Metode (method) dinamai deskriptif (mis. isRegisteredForDiscounts).
   - Gunakan type hint & return type eksplisit; enum key berbentuk TitleCase.

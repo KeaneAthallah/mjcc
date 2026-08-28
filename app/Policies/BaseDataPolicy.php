@@ -33,4 +33,14 @@ abstract class BaseDataPolicy
     {
         return Access::canWrite($user, $this->resourceKey());
     }
+
+    public function restore(User $user, object $model): bool
+    {
+        return Access::canWrite($user, $this->resourceKey());
+    }
+
+    public function forceDelete(User $user, object $model): bool
+    {
+        return $user->isAdmin();
+    }
 }

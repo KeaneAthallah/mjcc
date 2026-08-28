@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EducationDashboardController;
@@ -25,7 +26,7 @@ Route::get('/', function () {
 
 // Authentication
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login')->middleware('guest');
-Route::post('/login', [AuthController::class, 'login'])->middleware('guest');
+Route::post('/login', [AuthController::class, 'login'])->name('login.attempt')->middleware(['guest', 'throttle:login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 Route::middleware('auth')->group(function () {
@@ -34,27 +35,48 @@ Route::middleware('auth')->group(function () {
 
     // Pendidikan
     Route::get('/education', [EducationDashboardController::class, 'index'])->name('education.dashboard');
+    Route::get('education/schools/trash', [SchoolController::class, 'trash'])->name('education.schools.trash');
     Route::resource('education/schools', SchoolController::class)->names('education.schools');
+    Route::put('education/schools/{id}/restore', [SchoolController::class, 'restore'])->name('education.schools.restore');
+    Route::delete('education/schools/{id}/force', [SchoolController::class, 'forceDestroy'])->name('education.schools.force-destroy');
 
     // Ketertiban
     Route::get('/security', [SecurityDashboardController::class, 'index'])->name('security.dashboard');
     Route::resource('security/polseks', PolsekController::class)->names('security.polseks');
+    Route::get('security/tipkamtikmas/trash', [TipkamtikmasController::class, 'trash'])->name('security.tipkamtikmas.trash');
     Route::resource('security/tipkamtikmas', TipkamtikmasController::class)->names('security.tipkamtikmas');
+    Route::put('security/tipkamtikmas/{id}/restore', [TipkamtikmasController::class, 'restore'])->name('security.tipkamtikmas.restore');
+    Route::delete('security/tipkamtikmas/{id}/force', [TipkamtikmasController::class, 'forceDestroy'])->name('security.tipkamtikmas.force-destroy');
+    Route::get('security/poskamlings/trash', [PoskamlingController::class, 'trash'])->name('security.poskamlings.trash');
     Route::resource('security/poskamlings', PoskamlingController::class)->names('security.poskamlings');
+    Route::put('security/poskamlings/{id}/restore', [PoskamlingController::class, 'restore'])->name('security.poskamlings.restore');
+    Route::delete('security/poskamlings/{id}/force', [PoskamlingController::class, 'forceDestroy'])->name('security.poskamlings.force-destroy');
+    Route::get('security/markets/trash', [MarketController::class, 'trash'])->name('security.markets.trash');
     Route::resource('security/markets', MarketController::class)->names('security.markets');
+    Route::put('security/markets/{id}/restore', [MarketController::class, 'restore'])->name('security.markets.restore');
+    Route::delete('security/markets/{id}/force', [MarketController::class, 'forceDestroy'])->name('security.markets.force-destroy');
 
     // Kesehatan
     Route::get('/health', [HealthDashboardController::class, 'index'])->name('health.dashboard');
+    Route::get('health/facilities/trash', [HealthFacilityController::class, 'trash'])->name('health.facilities.trash');
     Route::resource('health/facilities', HealthFacilityController::class)
         ->names('health.facilities')
         ->parameters(['facilities' => 'health_facility']);
+    Route::put('health/facilities/{id}/restore', [HealthFacilityController::class, 'restore'])->name('health.facilities.restore');
+    Route::delete('health/facilities/{id}/force', [HealthFacilityController::class, 'forceDestroy'])->name('health.facilities.force-destroy');
 
     // Peta Gabungan
     Route::get('/maps', [MapController::class, 'index'])->name('maps.index');
 
     // Data Master
+    Route::get('master/kecamatans/trash', [KecamatanController::class, 'trash'])->name('master.kecamatans.trash');
     Route::resource('master/kecamatans', KecamatanController::class)->names('master.kecamatans');
+    Route::put('master/kecamatans/{id}/restore', [KecamatanController::class, 'restore'])->name('master.kecamatans.restore');
+    Route::delete('master/kecamatans/{id}/force', [KecamatanController::class, 'forceDestroy'])->name('master.kecamatans.force-destroy');
+    Route::get('master/kelurahan/trash', [KelurahanController::class, 'trash'])->name('master.kelurahans.trash');
     Route::resource('master/kelurahan', KelurahanController::class)->names('master.kelurahans');
+    Route::put('master/kelurahan/{id}/restore', [KelurahanController::class, 'restore'])->name('master.kelurahans.restore');
+    Route::delete('master/kelurahan/{id}/force', [KelurahanController::class, 'forceDestroy'])->name('master.kelurahans.force-destroy');
     Route::resource('master/subjects', SubjectController::class)->names('master.subjects');
 
     // JSON helpers
@@ -62,6 +84,9 @@ Route::middleware('auth')->group(function () {
 
     // Users (admin only via policy)
     Route::resource('users', UserController::class)->names('users');
+
+    // Audit log (admin only via policy)
+    Route::get('/audit', [ActivityLogController::class, 'index'])->name('audit.index');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

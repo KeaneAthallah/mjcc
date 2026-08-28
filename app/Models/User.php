@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Concerns\LogsActivity;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -15,11 +16,13 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     public const ROLE_ADMIN = 'admin';
+
     public const ROLE_OPERATOR = 'operator';
+
     public const ROLE_VIEWER = 'viewer';
 
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, LogsActivity, Notifiable;
 
     /**
      * Get the attributes that should be cast.

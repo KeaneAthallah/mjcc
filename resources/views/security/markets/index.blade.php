@@ -7,6 +7,7 @@
 
     <x-page-title title="Data Pasar" subtitle="Kelola data pasar rakyat di Kabupaten Morowali">
         <x-slot:actions>
+            <x-button href="{{ route('security.markets.trash') }}" variant="ghost" size="sm">🗑️ Sampah</x-button>
             <x-button href="{{ route('security.markets.create') }}" variant="primary" size="sm">+ Tambah Pasar</x-button>
         </x-slot:actions>
     </x-page-title>

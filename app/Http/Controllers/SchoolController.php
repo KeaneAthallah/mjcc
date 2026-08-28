@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesSoftDeletes;
 use App\Http\Requests\StoreSchoolRequest;
 use App\Http\Requests\UpdateSchoolRequest;
 use App\Models\Kecamatan;
@@ -14,6 +15,15 @@ use Illuminate\View\View;
 
 class SchoolController extends Controller
 {
+    use HandlesSoftDeletes;
+
+    protected array $softDeleteResource = [
+        'class' => School::class,
+        'route' => 'education.schools',
+        'label' => 'sekolah',
+        'searchColumn' => 'name',
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', School::class);

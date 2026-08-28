@@ -7,6 +7,7 @@
 
     <x-page-title title="Data Tipkamtikmas" subtitle="Kelola data Tipkamtikmas (Tim Pemeliharaan Keamanan dan Ketertiban Masyarakat)">
         <x-slot:actions>
+            <x-button href="{{ route('security.tipkamtikmas.trash') }}" variant="ghost" size="sm">🗑️ Sampah</x-button>
             <x-button href="{{ route('security.tipkamtikmas.create') }}" variant="primary" size="sm">+ Tambah Tipkamtikmas</x-button>
         </x-slot:actions>
     </x-page-title>

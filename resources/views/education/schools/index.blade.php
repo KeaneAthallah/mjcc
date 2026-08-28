@@ -7,6 +7,7 @@
 
     <x-page-title title="Data Sekolah" subtitle="Kelola data sekolah di Kabupaten Morowali">
         <x-slot:actions>
+            <x-button href="{{ route('education.schools.trash') }}" variant="ghost" size="sm">🗑️ Sampah</x-button>
             <x-button href="{{ route('education.schools.create') }}" variant="primary" size="sm">+ Tambah Sekolah</x-button>
         </x-slot:actions>
     </x-page-title>

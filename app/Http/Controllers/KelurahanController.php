@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesSoftDeletes;
 use App\Http\Requests\StoreKelurahanRequest;
 use App\Http\Requests\UpdateKelurahanRequest;
 use App\Models\Kecamatan;
@@ -13,6 +14,15 @@ use Illuminate\View\View;
 
 class KelurahanController extends Controller
 {
+    use HandlesSoftDeletes;
+
+    protected array $softDeleteResource = [
+        'class' => Kelurahan::class,
+        'route' => 'master.kelurahans',
+        'label' => 'kelurahan',
+        'searchColumn' => 'name',
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Kelurahan::class);

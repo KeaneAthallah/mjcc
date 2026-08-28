@@ -75,6 +75,15 @@ it('renders all main views without errors for an admin', function () {
         route('users.show', $admin),
         route('users.edit', $admin),
         route('profile.edit'),
+
+        route('education.schools.trash'),
+        route('security.tipkamtikmas.trash'),
+        route('security.poskamlings.trash'),
+        route('security.markets.trash'),
+        route('health.facilities.trash'),
+        route('master.kecamatans.trash'),
+        route('master.kelurahans.trash'),
+        route('audit.index'),
     ];
 
     foreach ($urls as $url) {

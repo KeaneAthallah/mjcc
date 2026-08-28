@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Kecamatan;
+use App\Services\AlertService;
 use App\Services\SecurityDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class SecurityDashboardController extends Controller
 {
-    public function __construct(private readonly SecurityDashboardService $service) {}
+    public function __construct(
+        private readonly SecurityDashboardService $service,
+        private readonly AlertService $alerts,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -29,13 +33,16 @@ class SecurityDashboardController extends Controller
             'kelurahanChart' => $kelurahanChart,
         ];
 
+        $alerts = $this->alerts->forSector('ketertiban');
+
         return view('security.dashboard', compact(
             'stats',
             'dashboardData',
             'polsekTable',
             'map',
             'kecamatans',
-            'kecamatanId'
+            'kecamatanId',
+            'alerts'
         ));
     }
 }

@@ -7,6 +7,7 @@
 
     <x-page-title title="Data Kelurahan/Desa" subtitle="Kelola kelurahan dan desa di Kabupaten Morowali">
         <x-slot:actions>
+            <x-button href="{{ route('master.kelurahans.trash') }}" variant="ghost" size="sm">🗑️ Sampah</x-button>
             @canwrite('kelurahan')
                 <x-button href="{{ route('master.kelurahans.create') }}" variant="primary" size="sm">+ Tambah Kelurahan</x-button>
             @endcanwrite

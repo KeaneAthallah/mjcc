@@ -158,15 +158,17 @@ class HealthDashboardService
             ->map(fn (HealthFacility $f) => [
                 'id' => $f->id,
                 'name' => $f->name,
-                'type' => $f->facility_type,
+                'category' => $f->facility_type,
                 'latitude' => (float) $f->latitude,
                 'longitude' => (float) $f->longitude,
                 'kecamatan' => $f->kecamatan?->name,
-                'condition' => $f->condition,
-                'doctors' => (int) $f->doctors,
-                'nurses' => (int) $f->nurses,
-                'midwives' => (int) $f->midwives,
-                'beds' => (int) $f->beds,
+                'details' => [
+                    'Dokter' => (int) $f->doctors,
+                    'Perawat' => (int) $f->nurses,
+                    'Bidan' => (int) $f->midwives,
+                    'Bed' => (int) $f->beds,
+                    'Kondisi' => $f->condition,
+                ],
             ])
             ->values();
     }

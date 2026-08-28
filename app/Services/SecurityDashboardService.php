@@ -147,12 +147,14 @@ class SecurityDashboardService
             ->map(fn (Polsek $p) => [
                 'id' => $p->id,
                 'name' => $p->name,
-                'type' => 'polsek',
+                'category' => 'polsek',
                 'latitude' => (float) $p->latitude,
                 'longitude' => (float) $p->longitude,
                 'kecamatan' => $p->kecamatan?->name,
-                'personnel' => (int) $p->personnel_count,
-                'poskamling' => (int) $p->poskamling_count,
+                'details' => [
+                    'Personel' => (int) $p->personnel_count,
+                    'Poskamling' => (int) $p->poskamling_count,
+                ],
             ])
             ->values();
 
@@ -162,11 +164,11 @@ class SecurityDashboardService
             ->map(fn (Kelurahan $k) => [
                 'id' => $k->id,
                 'name' => $k->name,
-                'type' => 'kelurahan',
+                'category' => 'kelurahan',
                 'latitude' => (float) $k->latitude,
                 'longitude' => (float) $k->longitude,
                 'kecamatan' => $k->kecamatan?->name,
-                'population' => (int) $k->population,
+                'details' => ['Populasi' => (int) $k->population],
             ])
             ->values();
 
@@ -176,10 +178,11 @@ class SecurityDashboardService
             ->map(fn (Market $m) => [
                 'id' => $m->id,
                 'name' => $m->name,
-                'type' => 'pasar',
+                'category' => 'pasar',
                 'latitude' => (float) $m->latitude,
                 'longitude' => (float) $m->longitude,
                 'kecamatan' => $m->kecamatan?->name,
+                'details' => [],
             ])
             ->values();
 

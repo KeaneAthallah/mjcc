@@ -30,6 +30,39 @@
         <x-stat-card label="Poskamling & Pasar" value="{{ number_format($stats['total_poskamling'] + $stats['total_pasar']) }}" icon="🏪" color="amber"/>
     </div>
 
+    {{-- Perlu Perhatian --}}
+    @php
+        $alertCount = collect($alerts['critical'])->count() + collect($alerts['warning'])->count();
+    @endphp
+    <div class="rounded-2xl border {{ $alertCount > 0 ? 'border-red-200 bg-red-50/50' : 'border-emerald-200 bg-emerald-50/50' }} p-5 space-y-3">
+        <div class="flex items-center justify-between">
+            <h3 class="font-extrabold text-gray-900 text-[14px] flex items-center gap-2">
+                <span class="text-lg">{{ $alertCount > 0 ? '⚠️' : '✅' }}</span> Perlu Perhatian
+            </h3>
+            <x-badge color="{{ $alertCount > 0 ? 'red' : 'green' }}">{{ $alertCount > 0 ? $alertCount.' isu' : 'Semua aman' }}</x-badge>
+        </div>
+        @if ($alertCount > 0)
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                @foreach (array_merge($alerts['critical'], $alerts['warning']) as $alert)
+                    <div class="flex items-start gap-3 rounded-xl bg-white border border-gray-100 p-3">
+                        <span class="mt-0.5 text-base">
+                            {{ $alert['severity'] === 'critical' ? '🔴' : '🟡' }}
+                        </span>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[12px] font-bold text-gray-800">{{ $alert['title'] }}</span>
+                                <x-badge color="{{ $alert['severity'] === 'critical' ? 'red' : 'amber' }}">{{ $alert['sector'] }}</x-badge>
+                            </div>
+                            <p class="text-[12px] text-gray-500 mt-0.5">{{ $alert['detail'] }}</p>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <p class="text-[13px] text-gray-500">Tidak ada isu yang memerlukan perhatian saat ini.</p>
+        @endif
+    </div>
+
     {{-- Charts row 1 --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <x-card title="Perbandingan Sektor per Kecamatan" icon="📊" class="lg:col-span-2">

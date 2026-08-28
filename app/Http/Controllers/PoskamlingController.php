@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesSoftDeletes;
 use App\Http\Requests\StorePoskamlingRequest;
 use App\Http\Requests\UpdatePoskamlingRequest;
 use App\Models\Kecamatan;
@@ -13,6 +14,15 @@ use Illuminate\View\View;
 
 class PoskamlingController extends Controller
 {
+    use HandlesSoftDeletes;
+
+    protected array $softDeleteResource = [
+        'class' => Poskamling::class,
+        'route' => 'security.poskamlings',
+        'label' => 'pos kamling',
+        'searchColumn' => 'name',
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Poskamling::class);

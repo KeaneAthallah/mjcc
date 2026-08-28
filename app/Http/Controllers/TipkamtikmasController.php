@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesSoftDeletes;
 use App\Http\Requests\StoreTipkamtikmasRequest;
 use App\Http\Requests\UpdateTipkamtikmasRequest;
 use App\Models\Kecamatan;
@@ -13,6 +14,15 @@ use Illuminate\View\View;
 
 class TipkamtikmasController extends Controller
 {
+    use HandlesSoftDeletes;
+
+    protected array $softDeleteResource = [
+        'class' => Tipkamtikmas::class,
+        'route' => 'security.tipkamtikmas',
+        'label' => 'laporan TIPKAMTIKMAS',
+        'searchColumn' => 'title',
+    ];
+
     public function index(Request $request): View
     {
         $this->authorize('viewAny', Tipkamtikmas::class);

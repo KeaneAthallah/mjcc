@@ -7,6 +7,7 @@
 
     <x-page-title title="Data Poskamling" subtitle="Kelola data Pos Kamling (Pos Keamanan Lingkungan)">
         <x-slot:actions>
+            <x-button href="{{ route('security.poskamlings.trash') }}" variant="ghost" size="sm">🗑️ Sampah</x-button>
             <x-button href="{{ route('security.poskamlings.create') }}" variant="primary" size="sm">+ Tambah Poskamling</x-button>
         </x-slot:actions>
     </x-page-title>
