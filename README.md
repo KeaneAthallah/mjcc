@@ -1,58 +1,173 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+    <img src="public/logo.png" alt="Logo Morowali Juara" width="120">
 </p>
 
-## About Laravel
+<h1 align="center">MOROWALI JUARA COMMAND CENTER (MJCC)</h1>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+<p align="center">
+    Sistem monitoring terintegrasi untuk Kabupaten Morowali, Sulawesi Tengah —
+    memantau sektor <strong>Pendidikan</strong>, <strong>Ketertiban</strong>, dan <strong>Kesehatan</strong> dalam satu dashboard.
+</p>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 📌 Tentang Proyek
 
-## Learning Laravel
+**MJCC (MOROWALI JUARA COMMAND CENTER)** adalah aplikasi web dashboard monitoring yang menghimpun, mengelola, dan memvisualisasikan data sektor publik di Kabupaten Morowali ke dalam satu pusat kendali. Aplikasi ini juga menyediakan **REST API** untuk dikonsumsi aplikasi mobile **Flutter (Android)**.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Dibangun dengan **Laravel 13** (PHP 8.3+) dan dilengkapi **Sanctum** untuk autentikasi API bearer token, serta **Pest** untuk pengujian.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Fitur Utama
+- 🎓 **Dashboard Pendidikan** — statistik SD/SMP, jumlah siswa & guru, rasio guru, progress fasilitas.
+- 🛡️ **Dashboard Ketertiban** — polsek, tipkamtikmas, poskamling, pasar.
+- 🏥 **Dashboard Kesehatan** — puskesmas, pustu, rumah sakit, posyandu, tenaga kesehatan.
+- 🗺️ **Peta Gabungan** — visualisasi semua lokasi di peta interaktif, bisa disaring per sektor/kecamatan.
+- 🗂️ **Data Master** — kecamatan, kelurahan/desa, mata pelajaran, sekolah, polsek, tipkamtikmas, poskamling, pasar, fasilitas kesehatan.
+- 👤 **Manajemen Pengguna & Role** — `admin`, `operator`, `viewer` (authorization policy + Form Request defense-in-depth).
+- 📜 **Log Aktivitas (Audit Trail)** — setiap aksi tercatat dan password tidak pernah tersimpan di log.
+- 📱 **REST API `/api/v1`** — endpoint lengkap untuk aplikasi Android (Flutter) dengan envelope JSON konsisten.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## 🖼️ Tampilan Aplikasi
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+> Ganti gambar placeholder di bawah dengan screenshot asli Anda (sudah disiapkan di `docs/screenshots/`).
 
-```bash
-composer require laravel/boost --dev
+### Halaman Login
+<p align="center">
+  <img src="docs/screenshots/login.png" alt="Halaman Login" width="720">
+</p>
 
-php artisan boost:install
+### Dashboard
+<p align="center">
+  <img src="docs/screenshots/dashboard1.png" alt="Dashboard 1" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard2.png" alt="Dashboard 2" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard3.png" alt="Dashboard 3" width="720">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard4.png" alt="Dashboard 4" width="720">
+</p>
+
+---
+
+## 🏗️ Teknologi
+
+| Lapisan | Teknologi |
+|---------|-----------|
+| Backend | Laravel 13 (PHP 8.3+) |
+| Database | MySQL (produksi) / SQLite in-memory (test) |
+| Autentikasi API | Laravel Sanctum (bearer token) |
+| Frontend | Blade + Tailwind CSS + Alpine.js (Vite) |
+| Pengujian | Pest (feature test) |
+| Mobile | Flutter (konsumsi REST API) |
+
+---
+
+## 📁 Struktur Proyek
+
+```
+app/
+├── Http/
+│   ├── Controllers/          # Web + API (Api/V1) controllers
+│   ├── Requests/             # Form Request (validasi + otorisasi)
+│   ├── Resources/            # Eloquent API Resources
+│   └── Responses/ApiResponse.php   # Envelope JSON standar
+├── Models/                   # Eloquent models
+├── Policies/                 # Authorization policies
+├── Services/                 # Dashboard, Alert, Map, ActivityLog services
+└── Support/Access.php        # Matriks role admin/operator/viewer
+
+routes/
+├── web.php                   # Routing aplikasi web (tidak berubah)
+└── api.php                   # REST API /api/v1
+
+docs/
+├── API.md                    # Dokumentasi lengkap REST API
+├── FLUTTER_API_INTEGRATION.md # Panduan integrasi Flutter
+└── screenshots/              # Screenshot aplikasi
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## 🚀 Instalasi (Setup Lokal)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+> Persyaratan: PHP 8.3+, Composer, Node.js (npm), dan MySQL.
 
-## Code of Conduct
+```bash
+# 1. Clone repositori & masuk ke direktori
+git clone <repo-url> mjcc && cd mjcc
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# 2. Install dependensi
+composer install
+npm install
 
-## Security Vulnerabilities
+# 3. Konfigurasi environment
+cp .env.example .env
+# Atur kredensial database (db_mjcc) di .env
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# 4. Generate key, jalankan migrasi & seeder
+php artisan key:generate
+php artisan migrate --seed
 
-## License
+# 5. Build aset frontend
+npm run build
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 6. Jalankan server
+php artisan serve
+```
+
+Buka `http://localhost:8000` pada browser. Untuk pengembangan frontend secara hot-reload, gunakan `npm run dev` atau `composer run dev`.
+
+> Ini mungkin perlu Anda atur kredensial DB di `.env` sebelum migrasi. Rekomendasi penggunaan seeder/akun awal: periksa `database/seeders/`.
+
+---
+
+## 🧪 Pengujian
+
+```bash
+php artisan test --compact   # atau: vendor/bin/pest
+```
+
+Suite mencakup pengujian web yang sudah ada plus pengujian API (autentikasi, otorisasi per role, CRUD, trash/restore, dashboard, peta, audit, profil).
+
+---
+
+## 📱 REST API untuk Flutter
+
+Aplikasi menyediakan API lengkap di prefix `/api/v1`:
+
+- **Autentikasi:** `POST /api/v1/login`, `POST /api/v1/logout`, `GET /api/v1/me`
+- **Dashboard:** `/api/v1/dashboard`, `/education`, `/security`, `/health`
+- **Peta:** `/api/v1/maps`
+- **CRUD:** schools, polseks, tipkamtikmas, poskamlings, markets, health facilities, kecamatans, kelurahans, subjects, users
+- **Audit log (admin):** `/api/v1/audit`
+
+Setiap request selain login membutuhkan header `Authorization: Bearer <token>` dan `Accept: application/json`.
+
+📖 Dokumentasi lengkap: [`docs/API.md`](docs/API.md)
+📱 Panduan integrasi Flutter: [`docs/FLUTTER_API_INTEGRATION.md`](docs/FLUTTER_API_INTEGRATION.md)
+
+---
+
+## 🔐 Role & Otorisasi
+
+| Akses | Admin | Operator | Viewer |
+|-------|:---:|:---:|:---:|
+| Melihat data & dashboard | ✅ | ✅ | ✅ |
+| CRUD data operasional | ✅ | ✅ | ❌ |
+| Restore soft-delete | ✅ | ✅ | ❌ |
+| Kelola user, kecamatan, audit | ✅ | ❌ | ❌ |
+| Hapus permanen (force-delete) | ✅ | ❌ | ❌ |
+
+---
+
+## 📄 Lisensi
+
+MIT License — bebas digunakan dan dimodifikasi.
