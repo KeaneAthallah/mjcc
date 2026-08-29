@@ -10,6 +10,7 @@ use App\Models\Polsek;
 use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\Tipkamtikmas;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -32,12 +33,59 @@ class DashboardService
      */
     private function cached(string $key, callable $callback): array
     {
-        return Cache::remember('dashboard.'.$key, self::CACHE_TTL, $callback);
+        return $this->remember($key, $callback);
     }
 
     private function cachedCollection(string $key, callable $callback): Collection
     {
-        return Cache::remember('dashboard.'.$key, self::CACHE_TTL, $callback);
+        return $this->remember($key, $callback);
+    }
+
+    /**
+     * Cached lookup that is resilient to corrupt serialized values.
+     *
+     * The database (and file) cache stores Eloquent instances verbatim. Those
+     * can unserialise as `__PHP_Incomplete_Class` when the serialized class
+     * definition is not loaded yet (e.g. a `Collection`) or after model/code
+     * changes. Such values are treated as a miss and rebuilt, and the relevant
+     * collection classes are force-loaded before reading so unserialize can
+     * complete.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function remember(string $key, callable $callback): mixed
+    {
+        // Loading these before `Cache::get` lets the cached `Collection`
+        // instances unserialise instead of degrading to `__PHP_Incomplete_Class`.
+        \Illuminate\Database\Eloquent\Collection::class;
+        Collection::class;
+        LengthAwarePaginator::class;
+
+        $cacheKey = 'dashboard.'.$key;
+        $value = Cache::get($cacheKey);
+
+        if (! $this->isUsable($value)) {
+            $value = $callback();
+            Cache::put($cacheKey, $value, self::CACHE_TTL);
+        }
+
+        return $value;
+    }
+
+    private function isUsable(mixed $value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        if (is_a($value, '__PHP_Incomplete_Class')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
