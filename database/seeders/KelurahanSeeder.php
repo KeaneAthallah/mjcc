@@ -55,7 +55,7 @@ class KelurahanSeeder extends Seeder
 
         $list = $names[$kecamatan] ?? [];
 
-        return $list[$i] ?? ($kecamatan . ' Kelurahan ' . ($i + 1));
+        return $list[$i] ?? ($kecamatan.' Kelurahan '.($i + 1));
     }
 
     private function populationFor(string $kecamatan, int $index): int

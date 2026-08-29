@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Kecamatan;
+use App\Models\Market;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Market>
+ * @extends Factory<Market>
  */
 class MarketFactory extends Factory
 {
@@ -19,7 +20,7 @@ class MarketFactory extends Factory
     {
         return [
             'kecamatan_id' => Kecamatan::factory(),
-            'name' => 'Pasar ' . fake()->city(),
+            'name' => 'Pasar '.fake()->city(),
             'address' => fake()->streetAddress(),
             'latitude' => fake()->latitude(-3.7, -2.6),
             'longitude' => fake()->longitude(121.4, 122.3),

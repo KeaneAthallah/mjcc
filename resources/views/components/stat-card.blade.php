@@ -4,6 +4,7 @@
     'icon' => '📊',
     'color' => 'green',
     'iconBg' => null,
+    'valueId' => null,
 ])
 
 @php
@@ -19,7 +20,7 @@
 
 <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 {{ $border }} hover:shadow-md hover:-translate-y-0.5 transition relative overflow-hidden">
     <div class="w-11 h-11 rounded-xl {{ $iconStyle }} flex items-center justify-center text-xl mb-2.5">{{ $icon }}</div>
-    <div class="text-[26px] font-extrabold text-gray-900 leading-none">{{ $value }}</div>
+    <div id="{{ $valueId }}" class="text-[26px] font-extrabold text-gray-900 leading-none">{{ $value }}</div>
     <div class="text-[11px] text-gray-600 mt-1 uppercase tracking-wide">{{ $label }}</div>
     @if (isset($footer))
         <div class="mt-2 text-[11px] text-gray-400">{{ $footer }}</div>

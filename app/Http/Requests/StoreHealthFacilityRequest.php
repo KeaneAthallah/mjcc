@@ -22,7 +22,7 @@ class StoreHealthFacilityRequest extends FormRequest
         return [
             'kecamatan_id' => ['required', 'exists:kecamatans,id'],
             'name' => ['required', 'string', 'max:255'],
-            'facility_type' => ['required', 'in:' . implode(',', ['Puskesmas', 'Pustu', 'Rumah Sakit', 'Posyandu'])],
+            'facility_type' => ['required', 'in:'.implode(',', ['Puskesmas', 'Pustu', 'Rumah Sakit', 'Posyandu'])],
             'address' => ['nullable', 'string', 'max:255'],
             'latitude' => $c['latitude'],
             'longitude' => $c['longitude'],

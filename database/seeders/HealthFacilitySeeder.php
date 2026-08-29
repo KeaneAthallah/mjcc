@@ -58,7 +58,7 @@ class HealthFacilitySeeder extends Seeder
                     [
                         'kecamatan_id' => $kecamatan->id,
                         'facility_type' => $facility['type'],
-                        'address' => 'Jl. Layanan ' . $kecamatan->name,
+                        'address' => 'Jl. Layanan '.$kecamatan->name,
                         'latitude' => $coords['latitude'],
                         'longitude' => $coords['longitude'],
                         'condition' => 'baik',
@@ -68,7 +68,7 @@ class HealthFacilitySeeder extends Seeder
                         'midwives' => $a['midwives'],
                         'status' => 'aktif',
                         'phone' => $this->phoneFor($kecamatan->name, $facility['index']),
-                        'description' => $facility['type'] . ' di kecamatan ' . $kecamatan->name,
+                        'description' => $facility['type'].' di kecamatan '.$kecamatan->name,
                     ]
                 );
             }
@@ -79,8 +79,8 @@ class HealthFacilitySeeder extends Seeder
      * Allocate resource totals proportionally by weight, fixing rounding so
      * each resource sums exactly to its target.
      *
-     * @param array<int, array<string, mixed>> $facilities
-     * @param array<string, int> $targets
+     * @param  array<int, array<string, mixed>>  $facilities
+     * @param  array<string, int>  $targets
      * @return array<int, array<string, int>>
      */
     private function allocate(array $facilities, array $targets): array
@@ -119,15 +119,15 @@ class HealthFacilitySeeder extends Seeder
     private function nameFor(string $type, string $kecamatan, int $index): string
     {
         return match ($type) {
-            HealthFacility::TYPE_RS => "RSUD {$kecamatan} " . ($index + 1),
-            HealthFacility::TYPE_PUSKESMAS => "Puskesmas {$kecamatan} " . ($index + 1),
-            HealthFacility::TYPE_PUSTU => "Pustu {$kecamatan} " . ($index + 1),
-            default => "Posyandu {$kecamatan} " . ($index + 1),
+            HealthFacility::TYPE_RS => "RSUD {$kecamatan} ".($index + 1),
+            HealthFacility::TYPE_PUSKESMAS => "Puskesmas {$kecamatan} ".($index + 1),
+            HealthFacility::TYPE_PUSTU => "Pustu {$kecamatan} ".($index + 1),
+            default => "Posyandu {$kecamatan} ".($index + 1),
         };
     }
 
     private function phoneFor(string $name, int $index): string
     {
-        return '0' . (100000000 + crc32($name) % 700000000 + $index);
+        return '0'.(100000000 + crc32($name) % 700000000 + $index);
     }
 }

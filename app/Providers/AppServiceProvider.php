@@ -8,6 +8,7 @@ use App\Models\Market;
 use App\Models\Polsek;
 use App\Models\Poskamling;
 use App\Models\School;
+use App\Models\SosAlert;
 use App\Models\Tipkamtikmas;
 use App\Support\Access;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -40,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
             ));
         });
 
+        RateLimiter::for('sos', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?? $request->ip());
+        });
+
         Model::preventLazyLoading(! $this->app->isProduction());
 
         Blade::if('canwrite', fn ($resource) => Access::canWrite(auth()->user(), $resource));
@@ -67,6 +72,18 @@ class AppServiceProvider extends ServiceProvider
                 ),
                 'kesehatan' => (string) HealthFacility::count(),
             ]);
+
+            $user = auth()->user();
+
+            $view->with('sosStats', $user !== null && $user->canManageData()
+                ? [
+                    'open' => SosAlert::query()->whereIn('status', SosAlert::openStatuses())->count(),
+                    'active' => SosAlert::query()->where('status', SosAlert::STATUS_ACTIVE)->count(),
+                ]
+                : [
+                    'open' => 0,
+                    'active' => 0,
+                ]);
 
             $view->with('currentUser', auth()->user());
         });

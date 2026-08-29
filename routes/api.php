@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\PolsekController;
 use App\Http\Controllers\Api\V1\PoskamlingController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\SchoolController;
+use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TipkamtikmasController;
 use App\Http\Controllers\Api\V1\UserController;
@@ -90,5 +91,16 @@ Route::prefix('v1')->name('api.')->group(function () {
 
         // Audit log (admin only via ActivityLogPolicy)
         Route::get('audit', [AuditController::class, 'index']);
+
+        // SOS / Emergency (any authenticated user may create; management via policy)
+        Route::get('sos/active-count', [SosController::class, 'activeCount']);
+        Route::get('sos/my-open', [SosController::class, 'myOpen']);
+        Route::post('sos', [SosController::class, 'store'])->middleware('throttle:sos');
+        Route::get('sos', [SosController::class, 'index']);
+        Route::get('sos/{sos}', [SosController::class, 'show']);
+        Route::post('sos/{sos}/acknowledge', [SosController::class, 'acknowledge']);
+        Route::post('sos/{sos}/respond', [SosController::class, 'respond']);
+        Route::post('sos/{sos}/resolve', [SosController::class, 'resolve']);
+        Route::post('sos/{sos}/cancel', [SosController::class, 'cancel']);
     });
 });

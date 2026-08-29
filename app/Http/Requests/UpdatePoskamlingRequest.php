@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesCoordinates;
-use App\Models\Poskamling;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePoskamlingRequest extends FormRequest

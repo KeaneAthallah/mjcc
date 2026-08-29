@@ -4,10 +4,11 @@ namespace Database\Factories;
 
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
+use App\Models\Tipkamtikmas;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tipkamtikmas>
+ * @extends Factory<Tipkamtikmas>
  */
 class TipkamtikmasFactory extends Factory
 {
@@ -21,7 +22,7 @@ class TipkamtikmasFactory extends Factory
         return [
             'kecamatan_id' => Kecamatan::factory(),
             'kelurahan_id' => Kelurahan::factory(),
-            'title' => 'Tipkamtikmas ' . fake()->city(),
+            'title' => 'Tipkamtikmas '.fake()->city(),
             'description' => fake()->sentence(),
             'status' => fake()->randomElement(['aktif', 'tidak aktif']),
             'latitude' => fake()->latitude(-3.7, -2.6),

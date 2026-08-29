@@ -7,7 +7,7 @@ use App\Models\Kecamatan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\HealthFacility>
+ * @extends Factory<HealthFacility>
  */
 class HealthFacilityFactory extends Factory
 {
@@ -20,7 +20,7 @@ class HealthFacilityFactory extends Factory
     {
         return [
             'kecamatan_id' => Kecamatan::factory(),
-            'name' => fake()->unique()->company() . ' ' . fake()->randomElement(['Puskesmas', 'Pustu', 'Posyandu']),
+            'name' => fake()->unique()->company().' '.fake()->randomElement(['Puskesmas', 'Pustu', 'Posyandu']),
             'facility_type' => fake()->randomElement([
                 HealthFacility::TYPE_PUSKESMAS,
                 HealthFacility::TYPE_PUSTU,

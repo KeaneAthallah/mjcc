@@ -2,10 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Models\Kecamatan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Kecamatan>
+ * @extends Factory<Kecamatan>
  */
 class KecamatanFactory extends Factory
 {
@@ -17,7 +18,7 @@ class KecamatanFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->unique()->city() . ' ' . fake()->randomElement(['Utara', 'Selatan', 'Tengah', 'Timur']),
+            'name' => fake()->unique()->city().' '.fake()->randomElement(['Utara', 'Selatan', 'Tengah', 'Timur']),
             'code' => fake()->unique()->numerify('7402####'),
             'latitude' => fake()->latitude(-3.7, -2.6),
             'longitude' => fake()->longitude(121.4, 122.3),

@@ -15,6 +15,7 @@ use App\Http\Controllers\PoskamlingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SecurityDashboardController;
+use App\Http\Controllers\SosController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TipkamtikmasController;
 use App\Http\Controllers\UserController;
@@ -87,6 +88,17 @@ Route::middleware('auth')->group(function () {
 
     // Audit log (admin only via policy)
     Route::get('/audit', [ActivityLogController::class, 'index'])->name('audit.index');
+
+    // SOS / Emergency (any user creates; operator/admin manages via policy)
+    Route::get('/sos/active-count', [SosController::class, 'activeCount'])->name('sos.active-count');
+    Route::get('/sos/live', [SosController::class, 'live'])->name('sos.live');
+    Route::get('/sos/live/{sos}', [SosController::class, 'liveShow'])->name('sos.live-show');
+    Route::get('/sos', [SosController::class, 'index'])->name('sos.index');
+    Route::get('/sos/{sos}', [SosController::class, 'show'])->name('sos.show');
+    Route::post('/sos/{sos}/acknowledge', [SosController::class, 'acknowledge'])->name('sos.acknowledge');
+    Route::post('/sos/{sos}/respond', [SosController::class, 'respond'])->name('sos.respond');
+    Route::post('/sos/{sos}/resolve', [SosController::class, 'resolve'])->name('sos.resolve');
+    Route::post('/sos/{sos}/cancel', [SosController::class, 'cancel'])->name('sos.cancel');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

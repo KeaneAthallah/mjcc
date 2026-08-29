@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesCoordinates;
-use App\Models\Polsek;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

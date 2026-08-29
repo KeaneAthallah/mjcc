@@ -15,6 +15,7 @@ export const categoryConfig = {
     Pustu: { sector: 'kesehatan', color: '#6366f1', emoji: '🏬', label: 'Pustu' },
     'Rumah Sakit': { sector: 'kesehatan', color: '#dc2626', emoji: '🏨', label: 'Rumah Sakit' },
     Posyandu: { sector: 'kesehatan', color: '#3b82f6', emoji: '👶', label: 'Posyandu' },
+    sos: { sector: 'ketertiban', color: '#dc2626', emoji: '🆘', label: 'SOS Darurat' },
 };
 
 function iconFor(category, size = 28) {

@@ -25,7 +25,7 @@ class PolsekSeeder extends Seeder
                 ['name' => $polsek['name']],
                 [
                     'kecamatan_id' => $kecamatan->id,
-                    'address' => 'Jl. Poros ' . $kecamatan->name,
+                    'address' => 'Jl. Poros '.$kecamatan->name,
                     'latitude' => $coords['latitude'],
                     'longitude' => $coords['longitude'],
                     'personnel_count' => $polsek['personnel'],

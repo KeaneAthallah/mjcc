@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesCoordinates;
-use App\Models\HealthFacility;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateHealthFacilityRequest extends FormRequest
@@ -22,7 +21,7 @@ class UpdateHealthFacilityRequest extends FormRequest
         return [
             'kecamatan_id' => ['required', 'exists:kecamatans,id'],
             'name' => ['required', 'string', 'max:255'],
-            'facility_type' => ['required', 'in:' . implode(',', ['Puskesmas', 'Pustu', 'Rumah Sakit', 'Posyandu'])],
+            'facility_type' => ['required', 'in:'.implode(',', ['Puskesmas', 'Pustu', 'Rumah Sakit', 'Posyandu'])],
             'address' => ['nullable', 'string', 'max:255'],
             'latitude' => $c['latitude'],
             'longitude' => $c['longitude'],

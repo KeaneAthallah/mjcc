@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests\Concerns;
 
-use Illuminate\Validation\Rule;
-
 trait ValidatesCoordinates
 {
     /**

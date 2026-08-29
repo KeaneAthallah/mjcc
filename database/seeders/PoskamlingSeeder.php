@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Kecamatan;
-use App\Models\Kelurahan;
 use App\Models\Poskamling;
 use Illuminate\Database\Seeder;
 
@@ -25,7 +24,7 @@ class PoskamlingSeeder extends Seeder
                 $coords = CoordinateSeeder::near($kecamatan->latitude, $kecamatan->longitude, $i + 5);
                 $kelurahan = count($kelurahans) > 0 ? $kelurahans[$i % count($kelurahans)] : null;
 
-                $name = 'Poskamling ' . ($kelurahan?->name ?? $kecamatan->name) . ' ' . ($i + 1);
+                $name = 'Poskamling '.($kelurahan?->name ?? $kecamatan->name).' '.($i + 1);
 
                 Poskamling::updateOrCreate(
                     ['name' => $name],

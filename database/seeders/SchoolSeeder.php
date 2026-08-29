@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Kecamatan;
-use App\Models\Kelurahan;
 use App\Models\School;
 use Illuminate\Database\Seeder;
 
@@ -94,7 +93,7 @@ class SchoolSeeder extends Seeder
                 'kelurahan_id' => $kelurahan?->id,
                 'school_type' => $type,
                 'npsn' => $this->npsnFor($kecName, $index),
-                'address' => 'Jl. ' . ($kelurahan?->name ?? $kecName) . ' No. ' . ($index + 1),
+                'address' => 'Jl. '.($kelurahan?->name ?? $kecName).' No. '.($index + 1),
                 'latitude' => $coords['latitude'],
                 'longitude' => $coords['longitude'],
                 'condition' => 'baik',
@@ -117,7 +116,7 @@ class SchoolSeeder extends Seeder
     private function schoolName(string $type, string $kecName, int $index): string
     {
         $prefix = $type === School::TYPE_SD ? 'SDN' : 'SMPN';
-        $district = str_contains($kecName, ' ') ? explode(' ', $kecName)[1] . ' ' . explode(' ', $kecName)[0] : $kecName;
+        $district = str_contains($kecName, ' ') ? explode(' ', $kecName)[1].' '.explode(' ', $kecName)[0] : $kecName;
 
         return "{$prefix} {($index + 1)} {$district}";
     }

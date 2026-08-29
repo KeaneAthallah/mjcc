@@ -22,13 +22,13 @@ class MarketSeeder extends Seeder
             for ($i = 0; $i < $count; $i++) {
                 $coords = CoordinateSeeder::near($kecamatan->latitude, $kecamatan->longitude, $i + 8);
 
-                $marketName = 'Pasar ' . $kecamatan->name . ' ' . ($i + 1);
+                $marketName = 'Pasar '.$kecamatan->name.' '.($i + 1);
 
                 Market::updateOrCreate(
                     ['name' => $marketName],
                     [
                         'kecamatan_id' => $kecamatan->id,
-                        'address' => 'Jl. Pasar ' . $kecamatan->name,
+                        'address' => 'Jl. Pasar '.$kecamatan->name,
                         'latitude' => $coords['latitude'],
                         'longitude' => $coords['longitude'],
                         'status' => 'aktif',

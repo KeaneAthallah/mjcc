@@ -26,6 +26,16 @@ class ActivityLog extends Model
 
     public const ACTION_ROLE_CHANGE = 'role_change';
 
+    public const ACTION_SOS_CREATED = 'sos_created';
+
+    public const ACTION_SOS_ACKNOWLEDGED = 'sos_acknowledged';
+
+    public const ACTION_SOS_RESPONDING = 'sos_responding';
+
+    public const ACTION_SOS_RESOLVED = 'sos_resolved';
+
+    public const ACTION_SOS_CANCELLED = 'sos_cancelled';
+
     protected $fillable = [
         'user_id',
         'action',
@@ -63,6 +73,11 @@ class ActivityLog extends Model
             self::ACTION_RESTORE => "Memulihkan {$label}",
             self::ACTION_FORCE_DELETE => "Menghapus permanen {$label}",
             self::ACTION_ROLE_CHANGE => 'Mengubah peran pengguna',
+            self::ACTION_SOS_CREATED => 'Mengirim SOS darurat',
+            self::ACTION_SOS_ACKNOWLEDGED => 'Menerima SOS darurat',
+            self::ACTION_SOS_RESPONDING => 'Menuju lokasi SOS',
+            self::ACTION_SOS_RESOLVED => 'Menyelesaikan SOS darurat',
+            self::ACTION_SOS_CANCELLED => 'Membatalkan SOS darurat',
             default => $this->action,
         };
     }

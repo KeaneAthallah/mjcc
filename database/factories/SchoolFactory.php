@@ -8,7 +8,7 @@ use App\Models\School;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\School>
+ * @extends Factory<School>
  */
 class SchoolFactory extends Factory
 {
@@ -24,7 +24,7 @@ class SchoolFactory extends Factory
         return [
             'kecamatan_id' => Kecamatan::factory(),
             'kelurahan_id' => Kelurahan::factory(),
-            'name' => ($type === School::TYPE_SD ? 'SDN ' : 'SMPN ') . fake()->unique()->numberBetween(1, 200) . ' ' . fake()->city(),
+            'name' => ($type === School::TYPE_SD ? 'SDN ' : 'SMPN ').fake()->unique()->numberBetween(1, 200).' '.fake()->city(),
             'school_type' => $type,
             'npsn' => fake()->unique()->numerify('#########'),
             'address' => fake()->streetAddress(),

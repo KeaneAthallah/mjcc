@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesCoordinates;
-use App\Models\Tipkamtikmas;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTipkamtikmasRequest extends FormRequest

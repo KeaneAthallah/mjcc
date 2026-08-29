@@ -4,10 +4,11 @@ namespace Database\Factories;
 
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
+use App\Models\Poskamling;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Poskamling>
+ * @extends Factory<Poskamling>
  */
 class PoskamlingFactory extends Factory
 {
@@ -21,7 +22,7 @@ class PoskamlingFactory extends Factory
         return [
             'kecamatan_id' => Kecamatan::factory(),
             'kelurahan_id' => Kelurahan::factory(),
-            'name' => 'Poskamling ' . fake()->city() . ' ' . fake()->numberBetween(1, 50),
+            'name' => 'Poskamling '.fake()->city().' '.fake()->numberBetween(1, 50),
             'latitude' => fake()->latitude(-3.7, -2.6),
             'longitude' => fake()->longitude(121.4, 122.3),
             'status' => 'aktif',

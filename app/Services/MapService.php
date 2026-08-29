@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Models\HealthFacility;
+use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Market;
 use App\Models\Polsek;
 use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\Tipkamtikmas;
+use Illuminate\Support\Collection;
 
 /**
  * Provides data for the combined map ("Peta Gabungan") so all sector records
@@ -20,7 +22,7 @@ class MapService
      * All map-enabled records across all sectors, optionally filtered by
      * kecamatan.
      *
-     * @return array{markers: \Illuminate\Support\Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>}
+     * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>}
      */
     public function combined(?int $kecamatanId = null): array
     {
@@ -165,7 +167,7 @@ class MapService
 
         return [
             'markers' => $markers,
-            'kecamatans' => \App\Models\Kecamatan::orderBy('name')
+            'kecamatans' => Kecamatan::orderBy('name')
                 ->get(['id', 'name'])
                 ->map(fn ($k) => ['id' => $k->id, 'name' => $k->name])
                 ->all(),

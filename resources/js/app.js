@@ -82,6 +82,160 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // SOS monitoring: polls the open-alert count for the badge + new-SOS toast.
+    Alpine.data('sosMonitor', () => ({
+        open: 0,
+        active: 0,
+        url: '/sos/active-count',
+        timer: null,
+        init() {
+            this.open = Number(this.$el.dataset.open ?? 0);
+            this.active = Number(this.$el.dataset.active ?? 0);
+            this.tick();
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (this.timer) {
+                        clearInterval(this.timer);
+                        this.timer = null;
+                    }
+                } else if (!this.timer) {
+                    this.tick();
+                }
+            });
+        },
+        tick() {
+            this.timer = setInterval(() => this.poll(), 15000);
+            this.poll();
+        },
+        async poll() {
+            try {
+                const res = await fetch(this.url, { headers: { Accept: 'application/json' } });
+                const data = await res.json();
+                const previous = this.open;
+                this.open = Number(data.open ?? 0);
+                this.active = Number(data.active ?? 0);
+                if (this.open > previous) {
+                    const root = document.querySelector('[x-data="notifications()"]');
+                    if (root && root.__x) {
+                        root.__x.$data.push('warning', `SOS darurat baru! ${this.open} permintaan sedang dalam penanganan.`);
+                    }
+                }
+            } catch (e) {
+                // transient network error: keep the current badge value
+            }
+        },
+    }));
+
+    // Live SOS command center (index): polls stat counts, the open-alert map,
+    // and the list so the page updates with no manual refresh. Filters/paging
+    // from the current URL query string are preserved.
+    Alpine.data('sosLiveIndex', () => ({
+        url: '',
+        pollTimer: null,
+        init() {
+            this.url = this.$el.dataset.url || '/sos/live';
+            this.start();
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this.stop();
+                } else {
+                    this.start();
+                }
+            });
+        },
+        start() {
+            this.stop();
+            this.poll();
+            this.pollTimer = setInterval(() => this.poll(), 15000);
+        },
+        stop() {
+            if (this.pollTimer) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+            }
+        },
+        async poll() {
+            try {
+                const res = await fetch(this.url + window.location.search, { headers: { Accept: 'application/json' } });
+                if (!res.ok) {
+                    return;
+                }
+                const data = await res.json();
+
+                Object.entries(data.counts ?? {}).forEach(([key, value]) => {
+                    const el = document.getElementById('sos-stat-' + key);
+                    if (el && value != null) {
+                        el.textContent = value;
+                    }
+                });
+
+                const list = document.getElementById('sos-list');
+                if (list && typeof data.listHtml === 'string') {
+                    list.innerHTML = data.listHtml;
+                }
+
+                const M = window.Mjcc?.maps;
+                if (M && window.sosIndexMap && Array.isArray(data.markers)) {
+                    M.renderMarkers(window.sosIndexMap, data.markers, { cluster: false, fitBounds: false });
+                }
+            } catch (e) {
+                // transient network error: keep the current DOM
+            }
+        },
+    }));
+
+    // Live SOS detail: status card, timeline, and management buttons refresh
+    // in place so viewers see operator updates without reloading.
+    Alpine.data('sosLiveDetail', () => ({
+        url: '',
+        pollTimer: null,
+        init() {
+            this.url = this.$el.dataset.url || '';
+            this.start();
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this.stop();
+                } else {
+                    this.start();
+                }
+            });
+        },
+        start() {
+            this.stop();
+            this.poll();
+            this.pollTimer = setInterval(() => this.poll(), 15000);
+        },
+        stop() {
+            if (this.pollTimer) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+            }
+        },
+        async poll() {
+            if (!this.url) {
+                return;
+            }
+            try {
+                const res = await fetch(this.url, { headers: { Accept: 'application/json' } });
+                if (!res.ok) {
+                    return;
+                }
+                const data = await res.json();
+                const apply = (id, html) => {
+                    const el = document.getElementById(id);
+                    if (el && typeof html === 'string') {
+                        el.innerHTML = html;
+                    }
+                };
+                apply('sos-status-card', data.statusCardHtml);
+                apply('sos-timeline', data.timelineHtml);
+                apply('sos-actions', data.actionsHtml);
+            } catch (e) {
+                // transient network error: keep the current DOM
+            }
+        },
+    }));
+
     // Confirmation dialog for delete (also used generically)
     Alpine.data('confirmDialog', () => ({
         open: false,

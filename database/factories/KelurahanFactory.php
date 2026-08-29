@@ -3,10 +3,11 @@
 namespace Database\Factories;
 
 use App\Models\Kecamatan;
+use App\Models\Kelurahan;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Kelurahan>
+ * @extends Factory<Kelurahan>
  */
 class KelurahanFactory extends Factory
 {
@@ -19,7 +20,7 @@ class KelurahanFactory extends Factory
     {
         return [
             'kecamatan_id' => Kecamatan::factory(),
-            'name' => fake()->unique()->city() . ' ' . fake()->randomElement(['Desa', 'Kelurahan']),
+            'name' => fake()->unique()->city().' '.fake()->randomElement(['Desa', 'Kelurahan']),
             'code' => fake()->unique()->numerify('7402####'),
             'latitude' => fake()->latitude(-3.7, -2.6),
             'longitude' => fake()->longitude(121.4, 122.3),

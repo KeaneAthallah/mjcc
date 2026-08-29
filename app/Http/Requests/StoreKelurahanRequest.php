@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesCoordinates;
+use App\Models\Kelurahan;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreKelurahanRequest extends FormRequest
@@ -11,7 +12,7 @@ class StoreKelurahanRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()->can('create', \App\Models\Kelurahan::class);
+        return $this->user()->can('create', Kelurahan::class);
     }
 
     public function rules(): array

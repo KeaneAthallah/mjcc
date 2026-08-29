@@ -23,7 +23,7 @@ class StoreSchoolRequest extends FormRequest
             'kecamatan_id' => ['required', 'exists:kecamatans,id'],
             'kelurahan_id' => ['nullable', 'exists:kelurahans,id'],
             'name' => ['required', 'string', 'max:255', 'unique:schools,name'],
-            'school_type' => ['required', 'in:' . School::TYPE_SD . ',' . School::TYPE_SMP],
+            'school_type' => ['required', 'in:'.School::TYPE_SD.','.School::TYPE_SMP],
             'npsn' => ['nullable', 'string', 'max:20', 'unique:schools,npsn'],
             'address' => ['nullable', 'string', 'max:255'],
             'latitude' => $c['latitude'],

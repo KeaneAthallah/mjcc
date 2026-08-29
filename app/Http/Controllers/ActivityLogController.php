@@ -28,10 +28,15 @@ class ActivityLogController extends Controller
                 ActivityLog::ACTION_RESTORE,
                 ActivityLog::ACTION_FORCE_DELETE,
                 ActivityLog::ACTION_ROLE_CHANGE,
+                ActivityLog::ACTION_SOS_CREATED,
+                ActivityLog::ACTION_SOS_ACKNOWLEDGED,
+                ActivityLog::ACTION_SOS_RESPONDING,
+                ActivityLog::ACTION_SOS_RESOLVED,
+                ActivityLog::ACTION_SOS_CANCELLED,
             ],
             'resources' => collect([
                 'School', 'HealthFacility', 'Kecamatan', 'Kelurahan', 'Polsek',
-                'Market', 'Poskamling', 'Tipkamtikmas', 'Subject', 'User',
+                'Market', 'Poskamling', 'Tipkamtikmas', 'Subject', 'User', 'SosAlert',
             ]),
         ]);
     }

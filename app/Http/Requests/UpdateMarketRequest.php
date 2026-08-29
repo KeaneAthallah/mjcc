@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesCoordinates;
-use App\Models\Market;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateMarketRequest extends FormRequest

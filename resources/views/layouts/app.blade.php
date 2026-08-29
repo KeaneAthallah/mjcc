@@ -30,6 +30,16 @@
         </div>
 
         <nav class="flex-1 overflow-y-auto py-3 sidebar-scroll">
+            @can('viewAny', \App\Models\SosAlert::class)
+                <div class="px-5 py-2 text-[10px] uppercase tracking-widest opacity-40 font-bold">Darurat</div>
+                <a href="{{ route('sos.index') }}"
+                   class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('sos.*') ? 'bg-red-600/20 text-white border-red-400' : 'text-white/75 border-transparent hover:border-red-400' }}">
+                    <span class="w-[22px] text-center text-base">🆘</span>SOS Darurat
+                    <span class="ml-auto bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{{ $sosStats['open'] ?? 0 }}</span>
+                </a>
+                <div class="pt-1"></div>
+            @endcan
+
             <div class="px-5 py-2 text-[10px] uppercase tracking-widest opacity-40 font-bold">Menu Utama</div>
             <a href="{{ route('dashboard') }}"
                class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('dashboard') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
@@ -146,6 +156,22 @@
                 <span class="hidden sm:inline-flex items-center text-[12px] font-bold text-gray-700">
                     <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1.5"></span> LIVE
                 </span>
+
+                @can('viewAny', \App\Models\SosAlert::class)
+                    <a href="{{ route('sos.index') }}"
+                       x-data="sosMonitor()"
+                       data-open="{{ $sosStats['open'] ?? 0 }}"
+                       data-active="{{ $sosStats['active'] ?? 0 }}"
+                       class="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 hover:bg-red-100"
+                       :class="{ 'animate-pulse': active > 0 }"
+                       title="SOS Darurat"
+                    >
+                        <span class="text-base">🆘</span>
+                        <span class="hidden md:inline text-[12px] font-bold">SOS</span>
+                        <span class="min-w-[20px] h-5 px-1.5 rounded-full bg-red-600 text-white text-[11px] font-extrabold flex items-center justify-center" x-text="open">0</span>
+                    </a>
+                @endcan
+
                 <div x-data="liveClock()" class="text-right">
                     <div class="text-lg sm:text-xl font-extrabold text-emerald-700 tabular-nums" x-text="time">--:--:--</div>
                     <div class="text-[10px] sm:text-[11px] text-gray-600 capitalize" x-text="date">--</div>
