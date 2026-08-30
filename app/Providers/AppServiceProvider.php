@@ -41,6 +41,22 @@ class AppServiceProvider extends ServiceProvider
             ));
         });
 
+        RateLimiter::for('register', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
+
+        RateLimiter::for('email_verify', function (Request $request) {
+            return Limit::perMinute(10)->by(Str::transliterate(
+                Str::lower((string) $request->string('email')).'|'.$request->ip()
+            ));
+        });
+
+        RateLimiter::for('email_resend', function (Request $request) {
+            return Limit::perMinute(3)->by(Str::transliterate(
+                Str::lower((string) $request->string('email')).'|'.$request->ip()
+            ));
+        });
+
         RateLimiter::for('sos', function (Request $request) {
             return Limit::perMinute(20)->by($request->user()?->id ?? $request->ip());
         });

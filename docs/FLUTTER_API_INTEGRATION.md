@@ -171,12 +171,37 @@ class AuthRepository {
 
 Login gagal → `DioException` dengan `.response?.statusCode == 422`; pesan di `errors.email`. Rate limit → status **429**.
 
+**Email belum diverifikasi:** login mengembalikan **403** dengan `extra.verification_required === true`. Tidak ada token diterbitkan; Flutter harus mengarahkan user ke layar verifikasi email (lihat § 5a).
+
+### 5a. Registrasi publik & verifikasi email
+
+Endpoints publik (tanpa token) di `AuthRepository`:
+
+```dart
+// POST /register -> 201, role selalu 'viewer' (diputuskan backend)
+await _dio.post('/register', data: {
+  'name': name, 'email': email, 'password': password,
+  'password_confirmation': confirm,
+});
+
+// POST /email/verify  (kode 6 digit, berlaku 10 menit, sekali pakai)
+await _dio.post('/email/verify', data: {'email': email, 'code': code});
+
+// POST /email/verification/resend (cooldown 60 detik di server + rate limit)
+await _dio.post('/email/verification/resend', data: {'email': email});
+```
+
+- Respons register (dan login 403) menyertakan `email_masked` / boleh diganti frontend dengan helper `maskEmail`.
+- Kode verifikasi **tidak pernah** muncul di respons API — jangan pernah log payload respons ini.
+- Implementasi produksi: `EmailNotVerifiedException` (403 + `verification_required`), `RegisterProvider`/`EmailVerificationProvider`, layar `RegisterScreen`/`EmailVerificationScreen`, dan pengalihan dari `LoginScreen` saat login ditolak karena verifikasi. Countdown kirim-ulang di klien adalah UX belaka; server tetap otoritatif.
+
 ---
 
 ## 6. Sesi & penanganan error
 
 - **`401`** → token hilang/cabut. Paksa ke halaman login dan kosongkan secure storage.
-- **`403`** → user tidak punya akses (lihat role). Nonaktifkan tombol/tindakan tulis.
+- **`403`** + `extra.verification_required === true` → email belum diverifikasi → arahkan ke layar verifikasi email.
+- **`403`** lainnya → user tidak punya akses (lihat role). Nonaktifkan tombol/tindakan tulis.
 - **`422`** → validasi gagal; tampilkan `errors` per field.
 - **`404`** → data tidak ditemukan.
 - **`429`** → tunda dan coba lagi (login).

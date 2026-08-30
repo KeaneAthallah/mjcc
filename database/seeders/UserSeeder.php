@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
                 'name' => 'Administrator',
                 'password' => 'password',
                 'role' => User::ROLE_ADMIN,
+                'email_verified_at' => now(),
             ]
         );
 
@@ -27,6 +28,7 @@ class UserSeeder extends Seeder
                 'name' => 'Operator',
                 'password' => 'password',
                 'role' => User::ROLE_OPERATOR,
+                'email_verified_at' => now(),
             ]
         );
 
@@ -36,6 +38,7 @@ class UserSeeder extends Seeder
                 'name' => 'Viewer',
                 'password' => 'password',
                 'role' => User::ROLE_VIEWER,
+                'email_verified_at' => now(),
             ]
         );
 
@@ -60,6 +63,7 @@ class UserSeeder extends Seeder
                     'name' => $user['name'],
                     'password' => 'password',
                     'role' => $user['role'],
+                    'email_verified_at' => now(),
                 ]
             );
         }

@@ -39,7 +39,7 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
 
-        User::create($request->validated());
+        User::create([...$request->validated(), 'email_verified_at' => now()]);
 
         return redirect()
             ->route('users.index')

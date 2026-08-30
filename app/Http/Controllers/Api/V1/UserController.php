@@ -53,7 +53,7 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
 
-        $user = User::create($request->validated());
+        $user = User::create([...$request->validated(), 'email_verified_at' => now()]);
 
         return ApiResponse::success($this->resourceFor($user), 'Pengguna berhasil ditambahkan.', 201);
     }

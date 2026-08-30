@@ -24,6 +24,7 @@ Dibangun dengan **Laravel 13** (PHP 8.3+) dan dilengkapi **Sanctum** untuk auten
 - 🗺️ **Peta Gabungan** — visualisasi semua lokasi di peta interaktif, bisa disaring per sektor/kecamatan.
 - 🗂️ **Data Master** — kecamatan, kelurahan/desa, mata pelajaran, sekolah, polsek, tipkamtikmas, poskamling, pasar, fasilitas kesehatan.
 - 👤 **Manajemen Pengguna & Role** — `admin`, `operator`, `viewer` (authorization policy + Form Request defense-in-depth).
+- ✉️ **Registrasi Publik & Verifikasi Email** — pendaftaran mandiri lewat API (role selalu diset `viewer` oleh backend) dikonfirmasi dengan kode verifikasi 6 digit sekali pakai yang dikirim via email.
 - 📜 **Log Aktivitas (Audit Trail)** — setiap aksi tercatat dan password tidak pernah tersimpan di log.
 - 📱 **REST API `/api/v1`** — endpoint lengkap untuk aplikasi Android (Flutter) dengan envelope JSON konsisten.
 
@@ -135,7 +136,7 @@ Buka `http://localhost:8000` pada browser. Untuk pengembangan frontend secara ho
 php artisan test --compact   # atau: vendor/bin/pest
 ```
 
-Suite mencakup pengujian web yang sudah ada plus pengujian API (autentikasi, otorisasi per role, CRUD, trash/restore, dashboard, peta, audit, profil).
+Suite mencakup pengujian web yang sudah ada plus pengujian API (autentikasi, registrasi & verifikasi email, otorisasi per role, CRUD, trash/restore, dashboard, peta, audit, profil).
 
 ---
 
@@ -143,13 +144,13 @@ Suite mencakup pengujian web yang sudah ada plus pengujian API (autentikasi, oto
 
 Aplikasi menyediakan API lengkap di prefix `/api/v1`:
 
-- **Autentikasi:** `POST /api/v1/login`, `POST /api/v1/logout`, `GET /api/v1/me`
+- **Autentikasi & Pendaftaran:** `POST /api/v1/login`, `POST /api/v1/logout`, `GET /api/v1/me`, `POST /api/v1/register`, `POST /api/v1/email/verify`, `POST /api/v1/email/verification/resend`
 - **Dashboard:** `/api/v1/dashboard`, `/education`, `/security`, `/health`
 - **Peta:** `/api/v1/maps`
 - **CRUD:** schools, polseks, tipkamtikmas, poskamlings, markets, health facilities, kecamatans, kelurahans, subjects, users
 - **Audit log (admin):** `/api/v1/audit`
 
-Setiap request selain login membutuhkan header `Authorization: Bearer <token>` dan `Accept: application/json`.
+Setiap request selain `login`, `register`, `email/verify`, dan `email/verification/resend` membutuhkan header `Authorization: Bearer <token>` dan `Accept: application/json`.
 
 📖 Dokumentasi lengkap: [`docs/API.md`](docs/API.md)
 📱 Panduan integrasi Flutter: [`docs/FLUTTER_API_INTEGRATION.md`](docs/FLUTTER_API_INTEGRATION.md)

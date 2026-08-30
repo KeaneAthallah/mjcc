@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->name('api.')->group(function () {
     // Public authentication
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:register');
+    Route::post('email/verify', [AuthController::class, 'verifyEmail'])->middleware('throttle:email_verify');
+    Route::post('email/verification/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:email_resend');
 
     Route::middleware('auth:sanctum')->group(function () {
         // Auth

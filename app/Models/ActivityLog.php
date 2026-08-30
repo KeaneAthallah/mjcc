@@ -14,6 +14,10 @@ class ActivityLog extends Model
 
     public const ACTION_LOGOUT = 'logout';
 
+    public const ACTION_REGISTER = 'register';
+
+    public const ACTION_EMAIL_VERIFICATION = 'email_verification';
+
     public const ACTION_CREATE = 'create';
 
     public const ACTION_UPDATE = 'update';
@@ -67,6 +71,8 @@ class ActivityLog extends Model
         return match ($this->action) {
             self::ACTION_LOGIN => 'Masuk ke sistem',
             self::ACTION_LOGOUT => 'Keluar dari sistem',
+            self::ACTION_REGISTER => 'Mendaftarkan akun baru',
+            self::ACTION_EMAIL_VERIFICATION => 'Memverifikasi email',
             self::ACTION_CREATE => "Menambah {$label}",
             self::ACTION_UPDATE => "Mengubah {$label}",
             self::ACTION_DELETE => "Menghapus {$label}",

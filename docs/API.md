@@ -10,7 +10,7 @@ Public API untuk aplikasi **MOROWALI JUARA COMMAND CENTER (MJCC)** versi Flutter
 
 ## 1. Autentikasi (Sanctum Bearer Token)
 
-Semua endpoint kecuali `POST /api/v1/login` membutuhkan header:
+Semua endpoint **kecuali** `POST /api/v1/login`, `POST /api/v1/register`, `POST /api/v1/email/verify`, dan `POST /api/v1/email/verification/resend` membutuhkan header:
 
 ```
 Authorization: Bearer <token>
@@ -52,6 +52,7 @@ Sukses **200**:
 ```
 
 - Salah kredensial → **422** `{ "success": false, "message": "Validasi gagal", "errors": { "email": ["Kredensial yang dimasukkan tidak cocok dengan data kami."] } }`
+- **Email belum diverifikasi** → **403** `{ "success": false, "message": "Email Anda belum diverifikasi. ...", "data": null, "errors": null, "extra": { "verification_required": true } }` — tidak ada token diterbitkan. Flutter mengarahkan ke layar verifikasi email.
 - **Rate limit 5 percobaan/menit** per email+IP → **429**.
 - Login/logout otomatis tercatat di audit log.
 
@@ -70,6 +71,80 @@ GET /api/v1/me
 ```
 
 Mengembalikan user yang terautentikasi (bentuk sama dengan `user` di login). Bergerak dengan pola resource `UserResource`.
+
+### 1.4 Registrasi publik (viewer)
+
+**Publik — tidak butuh token.**
+
+```
+POST /api/v1/register
+```
+
+Body:
+
+```json
+{
+  "name": "Budi Santoso",
+  "email": "budi@example.com",
+  "password": "rahasia123",
+  "password_confirmation": "rahasia123"
+}
+```
+
+- **Role selalu diset `viewer` oleh backend** — payload klien tidak pernah memengaruhi role.
+- Sukses **201** (bentuk sama untuk akun baru maupun email yang sudah terdaftar → mencegah enumerasi akun):
+
+```json
+{
+  "success": true,
+  "message": "Registrasi berhasil. Silakan verifikasi email Anda dengan kode yang telah dikirim.",
+  "data": { "email_masked": "b***@example.com" }
+}
+```
+
+- Registrasi tidak menerbitkan token; lanjut ke verifikasi email dulu.
+- `name` minimal 3 karakter; `password` minimal 8 karakter (aturan `Password::defaults()`), wajib `confirmed`.
+- **Rate limit 5 request/menit** per IP → **429**.
+- Email sudah terdaftar & terverifikasi → tetap **201** tapi **tidak** mengirim email lagi. Email terdaftar belum terverifikasi → kode baru dikirim ulang.
+
+### 1.5 Verifikasi kode email
+
+**Publik — tidak butuh token.**
+
+```
+POST /api/v1/email/verify
+```
+
+Body:
+
+```json
+{ "email": "budi@example.com", "code": "123456" }
+```
+
+- Sukses **200**: `{ "success": true, "message": "Email berhasil diverifikasi. Silakan masuk menggunakan akun Anda.", "data": null }`.
+- Email sudah diverifikasi → **200** dengan pesan `"Email sudah diverifikasi. Silakan masuk menggunakan akun Anda."` (idempoten).
+- Kode salah/kedaluwarsa/berlebih percobaan (5x) → **422** `errors.code` dengan pesan generik `"Kode verifikasi tidak valid."` — tidak membedakan email terdaftar/tdk.
+- Kode berlaku **10 menit**, sekali pakai (langsung tidak aktif setelah berhasil).
+- **Rate limit 10 request/menit** per email+IP → **429**.
+- Kode verifikasi **tidak pernah** dikembalikan dalam respons.
+
+### 1.6 Kirim ulang kode verifikasi
+
+**Publik — tidak butuh token.**
+
+```
+POST /api/v1/email/verification/resend
+```
+
+Body:
+
+```json
+{ "email": "budi@example.com" }
+```
+
+- Sukses **200**: `{ "success": true, "message": "Kode verifikasi telah dikirim.", "data": null }` — identik untuk email terdaftar maupun tidak (anti-enumerasi).
+- **Cooldown 60 detik** antar kirim → **422** dengan pesan `errors.email` berisi sisa waktu tunggu.
+- **Rate limit 3 request/menit** per email+IP → **429**.
 
 ---
 
@@ -104,9 +179,9 @@ Kode status dan pesan standar:
 | 200 | bervariasi | sukses |
 | 201 | bervariasi | create |
 | 401 | `Anda belum terautentikasi.` | token hilang/rusak |
-| 403 | `Anda tidak memiliki akses.` | tidak punya izin |
+| 403 | `Anda tidak memiliki akses.` / `Email Anda belum diverifikasi. ...` | tidak punya izin, atau email belum diverifikasi (`extra.verification_required: true`) |
 | 404 | `Data tidak ditemukan.` | resource tidak ada / route tidak ada |
-| 422 | `Validasi gagal` + `errors` | validasi input gagal |
+| 422 | `Validasi gagal` + `errors` | validasi input gagal (termasuk kode verifikasi salah / cooldown kirim ulang) |
 | 429 | `Too Many Requests` | rate limit login |
 | 500 | `Terjadi kesalahan pada server.` | error server (tanpa debug) |
 
@@ -302,6 +377,9 @@ Non-admin → **403**. Setiap mutasi data melalui API otomatis menghasilkan entr
 | POST | `/api/v1/login` | throttle:login | publik |
 | POST | `/api/v1/logout` | sanctum | semua |
 | GET | `/api/v1/me` | sanctum | semua |
+| POST | `/api/v1/register` | throttle:register | publik |
+| POST | `/api/v1/email/verify` | throttle:email_verify | publik |
+| POST | `/api/v1/email/verification/resend` | throttle:email_resend | publik |
 | GET | `/api/v1/profile` | sanctum | semua |
 | PUT | `/api/v1/profile` | sanctum | semua |
 | PUT | `/api/v1/profile/password` | sanctum | semua |
@@ -326,10 +404,19 @@ Non-admin → **403**. Setiap mutasi data melalui API otomatis menghasilkan entr
 
 ## 11. Contoh alur Flutter
 
+**Login & sesi:**
+
 1. **Login** `POST /api/v1/login` → simpan `token`.
 2. Setiap request kirim `Authorization: Bearer <token>`.
 3. Saat **401** → token kedaluwarsa/di-revoke → minta login ulang.
-4. Saat **403** → sembunyikan/matikan aksi tulis sesuai role.
-5. **Logout** `POST /api/v1/logout` → hapus token lokal.
+4. Saat **403** dengan `extra.verification_required === true` → arahkan ke **layar verifikasi email** (email belum diverifikasi).
+5. Saat **403** lainnya → sembunyikan/matikan aksi tulis sesuai role.
+6. **Logout** `POST /api/v1/logout` → hapus token lokal.
+
+**Registrasi publik & verifikasi email:**
+
+1. `POST /api/v1/register` → sukses (201) → tampilkan email termask (opsional) → arahkan ke **layar verifikasi email**.
+2. `POST /api/v1/email/verify` (kode 6 digit) → sukses → kembali ke login.
+3. Gagal → tampilkan pesan `errors` (kode salah / cooldown). Tombol **"Kirim ulang kode"** memanggil `POST /api/v1/email/verification/resend` (tunduk pada cooldown 60 detik di sisi klien maupun server).
 
 Panduan implementasi lengkap (Dio, secure storage, model JSON, paginasi, role) ada di `docs/FLUTTER_API_INTEGRATION.md`.

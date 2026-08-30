@@ -52,16 +52,19 @@ final class ApiResponse
 
     /**
      * @param  array<string, mixed>  $errors
+     * @param  array<string, mixed>  $extra
      */
     public static function error(
         string $message,
         int $status = 400,
         array $errors = [],
+        array $extra = [],
     ): JsonResponse {
         return response()->json([
             'success' => false,
             'message' => $message,
             'errors' => $errors ?: null,
+            ...$extra,
         ], $status);
     }
 

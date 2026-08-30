@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Models\Concerns\LogsActivity;
+use App\Services\EmailVerificationService;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     public const ROLE_ADMIN = 'admin';
 
@@ -61,5 +62,20 @@ class User extends Authenticatable
     public function canManageUsers(): bool
     {
         return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function hasVerifiedEmail(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    public function markEmailAsVerified(): bool
+    {
+        return $this->forceFill(['email_verified_at' => $this->freshTimestamp()])->save();
+    }
+
+    public function sendEmailVerificationNotification(): void
+    {
+        app(EmailVerificationService::class)->send($this);
     }
 }
