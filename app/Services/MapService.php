@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CrawlRecord;
 use App\Models\HealthFacility;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
@@ -10,6 +11,7 @@ use App\Models\Polsek;
 use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\Tipkamtikmas;
+use App\Support\TargetRegionService;
 use Illuminate\Support\Collection;
 
 /**
@@ -165,6 +167,42 @@ class MapService
                 ]);
             });
 
+        // Data Eksternal (crawler: ATS / DAPO / PIHPS BI / BPS)
+        CrawlRecord::with('source')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get()
+            ->each(function (CrawlRecord $cr) use (&$markers) {
+                if (! $this->isTargetRegionRecord($cr)) {
+                    return;
+                }
+
+                $slug = $cr->source?->slug;
+                $detailRoute = match ($slug) {
+                    'ats' => 'crawler.ats.show',
+                    'dapo' => 'crawler.dapo.schools.show',
+                    'sp2kp' => 'crawler.sp2kp.markets.show',
+                    'bps' => 'crawler.bps.show',
+                    default => null,
+                };
+
+                $markers->push([
+                    'name' => $cr->name ?? $cr->external_id,
+                    'sector' => 'eksternal',
+                    'category' => 'ext-'.($slug ?? 'external'),
+                    'latitude' => (float) $cr->latitude,
+                    'longitude' => (float) $cr->longitude,
+                    'kecamatan' => $cr->kecamatan_name ?? $cr->kabupaten_name,
+                    'lastSeen' => $cr->last_seen_at?->diffForHumans(),
+                    'detailUrl' => $detailRoute ? route($detailRoute, $cr) : null,
+                    'sourceUrl' => $cr->source_url,
+                    'details' => array_merge(
+                        ['Sumber' => strtoupper((string) ($slug ?? ''))],
+                        $this->extractableDetails($cr),
+                    ),
+                ]);
+            });
+
         return [
             'markers' => $markers,
             'kecamatans' => Kecamatan::orderBy('name')
@@ -172,5 +210,37 @@ class MapService
                 ->map(fn ($k) => ['id' => $k->id, 'name' => $k->name])
                 ->all(),
         ];
+    }
+
+    private function isTargetRegionRecord(CrawlRecord $record): bool
+    {
+        $service = new TargetRegionService;
+
+        return $service->isTargetRegion($record->kabupaten_code)
+            || $service->isTargetRegionName($record->kabupaten_name);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function extractableDetails(CrawlRecord $record): array
+    {
+        $data = $record->data ?? [];
+
+        if (! is_array($data)) {
+            return [];
+        }
+
+        $pick = ['komoditas', 'harga', 'indicator', 'label', 'status', 'jenjang'];
+
+        $details = [];
+
+        foreach ($pick as $key) {
+            if (isset($data[$key]) && is_scalar($data[$key])) {
+                $details[ucfirst($key)] = $data[$key];
+            }
+        }
+
+        return $details;
     }
 }

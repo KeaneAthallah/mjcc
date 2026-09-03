@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\CrawlerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EducationDashboardController;
 use App\Http\Controllers\HealthDashboardController;
@@ -68,6 +69,25 @@ Route::middleware('auth')->group(function () {
 
     // Peta Gabungan
     Route::get('/maps', [MapController::class, 'index'])->name('maps.index');
+
+    // Data Eksternal (Government Data Crawler)
+    Route::get('/crawler', [CrawlerController::class, 'index'])->name('crawler.dashboard');
+    Route::get('/crawler/records', [CrawlerController::class, 'records'])->name('crawler.records.index');
+    Route::get('/crawler/records/{record}', [CrawlerController::class, 'show'])->name('crawler.records.show');
+    Route::get('/crawler/sources/{source}', [CrawlerController::class, 'source'])->name('crawler.sources.show');
+    Route::post('/crawler/sources/{source}/run', [CrawlerController::class, 'runCrawl'])->name('crawler.sources.run');
+
+    // Data Terintegrasi (frontend pages per source)
+    Route::get('/crawler/ats', [CrawlerController::class, 'ats'])->name('crawler.ats');
+    Route::get('/crawler/ats/records/{record}', [CrawlerController::class, 'atsShow'])->name('crawler.ats.show');
+    Route::get('/crawler/dapo', [CrawlerController::class, 'dapo'])->name('crawler.dapo');
+    Route::get('/crawler/dapo/schools/{record}', [CrawlerController::class, 'dapoShow'])->name('crawler.dapo.schools.show');
+    Route::get('/crawler/sp2kp', [CrawlerController::class, 'sp2kp'])->name('crawler.sp2kp');
+    Route::get('/crawler/sp2kp/markets/{record}', [CrawlerController::class, 'sp2kpShow'])->name('crawler.sp2kp.markets.show');
+    Route::get('/crawler/bps', [CrawlerController::class, 'bps'])->name('crawler.bps');
+    Route::get('/crawler/bps/indikator/{record}', [CrawlerController::class, 'bpsShow'])->name('crawler.bps.show');
+    Route::get('/crawler/runs', [CrawlerController::class, 'runs'])->name('crawler.runs');
+    Route::get('/crawler/runs/{run}', [CrawlerController::class, 'runShow'])->name('crawler.runs.show');
 
     // Data Master
     Route::get('master/kecamatans/trash', [KecamatanController::class, 'trash'])->name('master.kecamatans.trash');

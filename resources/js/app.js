@@ -52,6 +52,14 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // Collapsible sidebar group with a header (used for nested menus).
+    Alpine.data('sidebarGroup', (defaultOpen = false) => ({
+        open: defaultOpen,
+        toggle() {
+            this.open = !this.open;
+        },
+    }));
+
     // Notifications / toast stack
     Alpine.data('notifications', () => ({
         items: [],

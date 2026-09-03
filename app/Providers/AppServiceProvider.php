@@ -10,9 +10,18 @@ use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\SosAlert;
 use App\Models\Tipkamtikmas;
+use App\Services\Crawlers\AtsCrawler;
+use App\Services\Crawlers\BpsCrawler;
+use App\Services\Crawlers\CrawlerManager;
+use App\Services\Crawlers\CrawlerRegistry;
+use App\Services\Crawlers\CrawlerSyncService;
+use App\Services\Crawlers\DapoCrawler;
+use App\Services\Crawlers\Sp2kpCrawler;
 use App\Support\Access;
+use App\Support\TargetRegionService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\Factory as Http;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
@@ -27,7 +36,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(CrawlerSyncService::class);
+        $this->app->singleton(CrawlerRegistry::class);
+        $this->app->singleton(CrawlerManager::class);
+
+        foreach ([AtsCrawler::class, DapoCrawler::class, Sp2kpCrawler::class, BpsCrawler::class] as $crawler) {
+            $this->app->bind($crawler, fn ($app) => new $crawler(
+                $app->make(Http::class),
+                $app->make(CrawlerSyncService::class),
+                new TargetRegionService,
+            ));
+        }
     }
 
     /**

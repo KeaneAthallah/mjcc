@@ -16,7 +16,7 @@ final class Access
     /**
      * Master data that only admin may mutate.
      */
-    public const ADMIN_ONLY = ['kecamatan'];
+    public const ADMIN_ONLY = ['kecamatan', 'crawler'];
 
     /**
      * Whether the user can perform a write (create/update/delete) operation

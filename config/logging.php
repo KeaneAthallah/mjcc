@@ -73,6 +73,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'crawler' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/crawler.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'max_files' => env('LOG_CRAWLER_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'monthly' => [
             'driver' => 'monthly',
             'path' => storage_path('logs/laravel.log'),

@@ -16,6 +16,11 @@ export const categoryConfig = {
     'Rumah Sakit': { sector: 'kesehatan', color: '#dc2626', emoji: '🏨', label: 'Rumah Sakit' },
     Posyandu: { sector: 'kesehatan', color: '#3b82f6', emoji: '👶', label: 'Posyandu' },
     sos: { sector: 'ketertiban', color: '#dc2626', emoji: '🆘', label: 'SOS Darurat' },
+    'ext-ats': { sector: 'eksternal', color: '#8b5cf6', emoji: '👥', label: 'ATS' },
+    'ext-dapo': { sector: 'eksternal', color: '#7c3aed', emoji: '🏫', label: 'DAPO' },
+    'ext-sp2kp': { sector: 'eksternal', color: '#6d28d9', emoji: '🏪', label: 'PIHPS BI' },
+    'ext-bps': { sector: 'eksternal', color: '#a855f7', emoji: '📊', label: 'BPS' },
+    'ext-external': { sector: 'eksternal', color: '#64748b', emoji: '📡', label: 'Eksternal' },
 };
 
 function iconFor(category, size = 28) {
@@ -41,13 +46,28 @@ export function popupHtml(marker) {
         statusLine = `<div style="color:#6b7280;font-size:12px">Kecamatan: <strong>${marker.kecamatan}</strong></div>`;
     }
 
+    let syncLine = '';
+    if (marker.lastSeen) {
+        syncLine = `<div style="color:#9ca3af;font-size:11px;margin-top:4px">Terakhir: ${marker.lastSeen}</div>`;
+    }
+
+    let actions = '';
+    if (marker.sourceUrl) {
+        actions += `<a href="${marker.sourceUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;margin-right:6px;padding:4px 10px;border-radius:8px;background:#f3f4f6;color:#6b7280;font-size:12px;font-weight:700;text-decoration:none">Data Sumber</a>`;
+    }
+    if (marker.detailUrl) {
+        actions += `<a href="${marker.detailUrl}" style="display:inline-block;margin-top:8px;padding:4px 10px;border-radius:8px;background:#047857;color:#fff;font-size:12px;font-weight:700;text-decoration:none">Lihat Detail</a>`;
+    }
+
     return `
-        <div style="min-width:170px">
+        <div style="min-width:180px">
             <div style="font-weight:800;color:#047857;margin-bottom:6px;font-size:14px">${marker.name}</div>
             <div style="color:#4b5563;font-size:12px;line-height:1.6">
                 <span style="display:inline-block;background:#d1fae5;color:#047857;padding:1px 8px;border-radius:10px;font-weight:700;margin-bottom:6px">${cfg.label}</span>
                 ${statusLine}
                 ${details}
+                ${syncLine}
+                ${actions}
             </div>
         </div>
     `;

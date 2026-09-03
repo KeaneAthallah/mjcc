@@ -13,9 +13,11 @@
         'blue' => 'border-l-blue-500',
         'red' => 'border-l-red-500',
         'amber' => 'border-l-amber-500',
+        'violet' => 'border-l-violet-500',
+        'gray' => 'border-l-gray-400',
     ][$color] ?? 'border-l-emerald-500';
 
-    $iconStyle = $iconBg ?? ($color === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600');
+    $iconStyle = $iconBg ?? ($color === 'blue' ? 'bg-blue-100 text-blue-600' : ($color === 'violet' ? 'bg-violet-100 text-violet-600' : 'bg-emerald-100 text-emerald-600'));
 @endphp
 
 <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 {{ $border }} hover:shadow-md hover:-translate-y-0.5 transition relative overflow-hidden">
