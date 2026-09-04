@@ -26,6 +26,7 @@ Dibangun dengan **Laravel 13** (PHP 8.3+) dan dilengkapi **Sanctum** untuk auten
 - 👤 **Manajemen Pengguna & Role** — `admin`, `operator`, `viewer` (authorization policy + Form Request defense-in-depth).
 - ✉️ **Registrasi Publik & Verifikasi Email** — pendaftaran mandiri lewat API (role selalu diset `viewer` oleh backend) dikonfirmasi dengan kode verifikasi 6 digit sekali pakai yang dikirim via email.
 - 📜 **Log Aktivitas (Audit Trail)** — setiap aksi tercatat dan password tidak pernah tersimpan di log.
+- 🌐 **Data Eksternal (Crawler)** — penghimpun data otomatis dari sumber pemerintah (DAPO, ATS, PIHPS/BI, BPS, Kemenkes) dengan endpoint API read-only (sumber, riwayat run, record) untuk semua role.
 - 📱 **REST API `/api/v1`** — endpoint lengkap untuk aplikasi Android (Flutter) dengan envelope JSON konsisten.
 
 ---
@@ -136,7 +137,7 @@ Buka `http://localhost:8000` pada browser. Untuk pengembangan frontend secara ho
 php artisan test --compact   # atau: vendor/bin/pest
 ```
 
-Suite mencakup pengujian web yang sudah ada plus pengujian API (autentikasi, registrasi & verifikasi email, otorisasi per role, CRUD, trash/restore, dashboard, peta, audit, profil).
+Suite mencakup pengujian web yang sudah ada plus pengujian API (autentikasi, registrasi & verifikasi email, otorisasi per role, CRUD, trash/restore, dashboard, peta, audit, profil, crawler).
 
 ---
 
@@ -148,6 +149,7 @@ Aplikasi menyediakan API lengkap di prefix `/api/v1`:
 - **Dashboard:** `/api/v1/dashboard`, `/education`, `/security`, `/health`
 - **Peta:** `/api/v1/maps`
 - **CRUD:** schools, polseks, tipkamtikmas, poskamlings, markets, health facilities, kecamatans, kelurahans, subjects, users
+- **Crawler (read-only):** `/api/v1/crawler`, `/sources/{slug}`, `/sources/{slug}/runs`, `/runs`, `/runs/{runId}`, `/records`, `/records/{recordId}`
 - **Audit log (admin):** `/api/v1/audit`
 
 Setiap request selain `login`, `register`, `email/verify`, dan `email/verification/resend` membutuhkan header `Authorization: Bearer <token>` dan `Accept: application/json`.
