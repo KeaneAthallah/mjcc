@@ -140,6 +140,21 @@
                     </div>
                 </div>
 
+                {{-- Kesehatan --}}
+                <div x-data="sidebarGroup({{ request()->routeIs('crawler.kesehatan*') ? 'true' : 'false' }})">
+                    <button @click="toggle()"
+                            class="w-full flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.kesehatan*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
+                        <span class="w-[22px] text-center text-base">🏥</span>Fasyankes Kemenkes
+                        <svg class="ml-auto w-4 h-4 opacity-60 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                    <div x-show="open" x-cloak class="bg-white/5">
+                        <x:crawler-subnav :links="[
+                            ['route' => 'crawler.kesehatan', 'label' => 'Ringkasan'],
+                            ['route' => 'crawler.kesehatan', 'label' => 'Data Fasyankes'],
+                        ]"/>
+                    </div>
+                </div>
+
                 <a href="{{ route('crawler.runs') }}"
                    class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.runs*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
                     <span class="w-[22px] text-center text-base">🕘</span>Riwayat Sinkronisasi

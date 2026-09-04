@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\CrawlRecord;
 use App\Models\CrawlRun;
 use App\Models\CrawlSource;
+use App\Models\HealthFacility;
 use App\Services\Crawlers\CrawlerManager;
 use App\Services\Crawlers\CrawlerService;
+use App\Services\Crawlers\HealthFacilityImportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +20,7 @@ class CrawlerController extends Controller
     public function __construct(
         private readonly CrawlerService $service,
         private readonly CrawlerManager $manager,
+        private readonly HealthFacilityImportService $healthImport,
     ) {}
 
     public function index(): View
@@ -81,24 +85,137 @@ class CrawlerController extends Controller
     }
 
     /**
-     * Admin-only: trigger an on-demand crawl for a single source.
+     * Admin/operator: trigger an on-demand crawl for a single source.
      */
     public function runCrawl(CrawlSource $source): RedirectResponse
     {
         $this->authorize('run', $source);
 
+        ActivityLog::query()->create([
+            'user_id' => auth()->id(),
+            'action' => ActivityLog::ACTION_CREATE,
+            'resource_type' => 'CrawlRun',
+            'new_values' => ['source' => $source->slug, 'trigger' => 'manual'],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
         try {
             $this->manager->seedSources();
             $result = $this->manager->syncSource($source->slug);
+
+            $extraMessage = '';
+            if ($source->slug === 'kesehatan') {
+                $run = CrawlRun::latest('started_at')->first();
+                if ($run !== null && $run->status !== CrawlRun::STATUS_FAILED) {
+                    $importStats = $this->healthImport->importFromCrawl($run);
+                    $extraMessage = " (impor: {$importStats['created']} baru, {$importStats['updated']} diperbarui)";
+                }
+            }
 
             Log::channel('crawler')->info('crawler:manual-run', [
                 'source' => $source->slug,
                 'found' => $result->found,
             ]);
 
-            return back()->with('success', "Sinkronisasi {$source->name} selesai (ditemukan {$result->found}, dibuat {$result->created}, diperbarui {$result->updated}).");
+            return back()->with('success', "Sinkronisasi {$source->name} selesai (ditemukan {$result->found}, dibuat {$result->created}, diperbarui {$result->updated}).{$extraMessage}");
         } catch (\Throwable $e) {
             return back()->with('error', "Sinkronisasi gagal: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Kesehatan crawl overview page.
+     */
+    public function kesehatan(Request $request): View
+    {
+        $this->authorize('viewAny', CrawlRecord::class);
+
+        $source = CrawlSource::where('slug', 'kesehatan')->first();
+        $meta = $this->service->sourceMeta('kesehatan');
+
+        $runs = $source
+            ? $source->runs()->with('source')->latest('started_at')->paginate(15)->withQueryString()
+            : collect();
+
+        $lastRun = $source?->runs()->latest('started_at')->first();
+
+        $recentErrors = $source
+            ? $source->errors()->latest('occurred_at')->limit(10)->get()
+            : collect();
+
+        $facilityStats = [
+            'total' => HealthFacility::count(),
+            'crawled' => HealthFacility::whereNotNull('source_id')->count(),
+            'puskesmas' => HealthFacility::where('facility_type', 'Puskesmas')->count(),
+            'pustu' => HealthFacility::where('facility_type', 'Pustu')->count(),
+            'rs' => HealthFacility::where('facility_type', 'Rumah Sakit')->count(),
+            'posyandu' => HealthFacility::where('facility_type', 'Posyandu')->count(),
+        ];
+
+        $recentImports = HealthFacility::whereNotNull('last_crawled_at')
+            ->latest('last_crawled_at')
+            ->limit(10)
+            ->get();
+
+        return view('crawler.kesehatan.index', compact(
+            'source', 'meta', 'runs', 'lastRun', 'recentErrors',
+            'facilityStats', 'recentImports',
+        ));
+    }
+
+    /**
+     * Show a single health facility imported via crawl.
+     */
+    public function kesehatanShow(HealthFacility $facility): View
+    {
+        $this->authorize('viewAny', CrawlRecord::class);
+
+        $crawlRecord = null;
+        if ($facility->source_id) {
+            $crawlRecord = CrawlRecord::where('external_id', $facility->source_id)->first();
+        }
+
+        return view('crawler.kesehatan.show', [
+            'facility' => $facility,
+            'crawlRecord' => $crawlRecord,
+        ]);
+    }
+
+    /**
+     * Trigger a Kesehatan crawl and import.
+     */
+    public function runKesehatan(): RedirectResponse
+    {
+        $source = CrawlSource::where('slug', 'kesehatan')->firstOrFail();
+        $this->authorize('run', $source);
+
+        try {
+            $this->manager->seedSources();
+            $result = $this->manager->syncSource('kesehatan');
+
+            $run = CrawlRun::latest('started_at')->first();
+
+            $importStats = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'failed' => 0, 'warnings' => []];
+            if ($run !== null && $run->status !== CrawlRun::STATUS_FAILED) {
+                $importStats = $this->healthImport->importFromCrawl($run);
+            }
+
+            Log::channel('crawler')->info('crawler:manual-run:kesehatan', [
+                'found' => $result->found,
+                'import' => $importStats,
+            ]);
+
+            $message = 'Sinkronisasi Fasilitas Kesehatan selesai. '
+                ."Ditemukan {$result->found}, "
+                ."dibuat {$importStats['created']}, "
+                ."diperbarui {$importStats['updated']}, "
+                ."dilewati {$importStats['skipped']}, "
+                ."gagal {$importStats['failed']}.";
+
+            return back()->with('success', $message);
+        } catch (\Throwable $e) {
+            return back()->with('error', "Sinkronisasi kesehatan gagal: {$e->getMessage()}");
         }
     }
 
@@ -287,6 +404,7 @@ class CrawlerController extends Controller
 
         return view('crawler.runs.show', [
             'run' => $run->load('source', 'records', 'errors'),
+            'records' => $run->records()->latest('last_seen_at')->limit(50)->get(),
             'meta' => $run->source ? $this->service->sourceMeta($run->source->slug) : null,
         ]);
     }

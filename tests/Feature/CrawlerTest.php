@@ -86,7 +86,7 @@ it('filters records by source and region', function () {
         ->assertSee('7212');
 });
 
-it('only an admin can trigger an on-demand crawl run', function () {
+it('allows admin and operator but blocks viewer from triggering an on-demand crawl run', function () {
     $source = CrawlSource::where('slug', 'bps')->firstOrFail();
     $viewer = User::factory()->viewer()->create();
     $operator = User::factory()->operator()->create();
@@ -100,7 +100,7 @@ it('only an admin can trigger an on-demand crawl run', function () {
 
     $this->actingAs($operator)
         ->post(route('crawler.sources.run', $source))
-        ->assertForbidden();
+        ->assertRedirect();
 
     $this->actingAs($admin)
         ->post(route('crawler.sources.run', $source))

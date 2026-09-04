@@ -18,6 +18,7 @@ class CrawlerRegistry
         'dapo' => DapoCrawler::class,
         'sp2kp' => Sp2kpCrawler::class,
         'bps' => BpsCrawler::class,
+        'kesehatan' => KesehatanCrawler::class,
     ];
 
     /**

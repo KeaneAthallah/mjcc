@@ -19,11 +19,11 @@ class CrawlSourcePolicy
     }
 
     /**
-     * Triggering an on-demand crawl is an admin-only operation.
+     * Triggering an on-demand crawl requires admin or operator role.
      */
     public function run(User $user, CrawlSource $source): bool
     {
-        return $user->isAdmin();
+        return $user->canManageData();
     }
 
     public function create(User $user): bool

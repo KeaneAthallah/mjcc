@@ -48,7 +48,7 @@
                 ['Pertama Dilihat', $record->first_seen_at?->format('d M Y H:i') ?? '-'],
                 ['Terakhir Dilihat', $record->last_seen_at?->format('d M Y H:i') ?? '-'],
                 ['Content Hash', substr((string) $record->content_hash, 0, 16).'…'],
-            ]]
+            ]" />
         </div>
     </div>
 

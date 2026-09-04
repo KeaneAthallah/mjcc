@@ -40,6 +40,7 @@
                         'dapo' => 'crawler.dapo',
                         'sp2kp' => 'crawler.sp2kp',
                         'bps' => 'crawler.bps',
+                        'kesehatan' => 'crawler.kesehatan',
                         default => null,
                     };
                     $cardHref = $pageRoute ? route($pageRoute) : route('crawler.sources.show', $row['model']);

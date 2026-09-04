@@ -18,11 +18,14 @@ class CrawlSource extends Model
 
     public const SOURCE_BPS = 'bps';
 
+    public const SOURCE_KESEHATAN = 'kesehatan';
+
     const SOURCES = [
         self::SOURCE_ATS,
         self::SOURCE_DAPO,
         self::SOURCE_SP2KP,
         self::SOURCE_BPS,
+        self::SOURCE_KESEHATAN,
     ];
 
     protected $fillable = [

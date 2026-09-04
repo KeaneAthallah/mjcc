@@ -29,6 +29,11 @@ class HealthFacilityResource extends JsonResource
             'status' => $this->status,
             'phone' => $this->phone,
             'description' => $this->description,
+            'source_name' => $this->source_name,
+            'source_url' => $this->source_url,
+            'source_id' => $this->source_id,
+            'source_updated_at' => $this->source_updated_at?->toISOString(),
+            'last_crawled_at' => $this->last_crawled_at?->toISOString(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

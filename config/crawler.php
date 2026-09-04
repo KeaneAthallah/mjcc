@@ -64,6 +64,19 @@ return [
     |
     */
     'sources' => [
+        'kesehatan' => [
+            'name' => 'Fasilitas Kesehatan',
+            'source_label' => 'Kemenkes Fasyankes',
+            'description' => 'Data fasilitas kesehatan (puskesmas, pustu, RS, posyandu) dari Kementerian Kesehatan RI untuk wilayah Kabupaten Morowali dan Morowali Utara.',
+            'icon' => '🏥',
+            'base_url' => env('KESEHATAN_BASE_URL', 'https://api-kfakes.kemkes.go.id/v1/api/fasyankes'),
+            'enabled' => env('KESEHATAN_CRAWLER_ENABLED', true),
+            'province_code' => '72',
+            'kabupaten_codes' => [
+                '7206' => 'Kabupaten Morowali',
+                '7212' => 'Kabupaten Morowali Utara',
+            ],
+        ],
         'ats' => [
             'name' => 'Anak Tidak Sekolah',
             'source_label' => 'ATS Kemendikdasmen',

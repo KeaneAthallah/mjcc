@@ -86,6 +86,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/crawler/sp2kp/markets/{record}', [CrawlerController::class, 'sp2kpShow'])->name('crawler.sp2kp.markets.show');
     Route::get('/crawler/bps', [CrawlerController::class, 'bps'])->name('crawler.bps');
     Route::get('/crawler/bps/indikator/{record}', [CrawlerController::class, 'bpsShow'])->name('crawler.bps.show');
+    Route::get('/crawler/kesehatan', [CrawlerController::class, 'kesehatan'])->name('crawler.kesehatan');
+    Route::get('/crawler/kesehatan/fasilitas/{facility}', [CrawlerController::class, 'kesehatanShow'])->name('crawler.kesehatan.show');
+    Route::post('/crawler/kesehatan/run', [CrawlerController::class, 'runKesehatan'])->name('crawler.kesehatan.run');
     Route::get('/crawler/runs', [CrawlerController::class, 'runs'])->name('crawler.runs');
     Route::get('/crawler/runs/{run}', [CrawlerController::class, 'runShow'])->name('crawler.runs.show');
 
