@@ -2,18 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CommandAlert;
 use App\Models\HealthFacility;
 use App\Models\Polsek;
 use App\Models\School;
-use App\Services\AlertService;
+use App\Services\CommandAlertSyncService;
+use App\Services\CommandCenterStatusService;
 use App\Services\DashboardService;
+use App\Services\DataFreshnessService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function __construct(
         private readonly DashboardService $dashboard,
-        private readonly AlertService $alerts,
+        private readonly CommandAlertSyncService $alerts,
+        private readonly CommandCenterStatusService $statusService,
+        private readonly DataFreshnessService $freshness,
     ) {}
 
     public function index(): View
@@ -68,9 +75,29 @@ class DashboardController extends Controller
             'palette' => ['#10b981', '#059669', '#047857', '#3b82f6', '#2563eb', '#1d4ed8', '#6ee7b7', '#34d399', '#a7f3d0', '#60a5fa'],
         ];
 
+        $this->alerts->sync();
+
+        $severityOrder = ['critical' => 0, 'warning' => 1, 'info' => 2];
+
+        $openAlerts = CommandAlert::query()
+            ->with('kecamatan:id,name')
+            ->whereIn('status', CommandAlert::openStatuses())
+            ->latest('opened_at')
+            ->limit(30)
+            ->get()
+            ->sortBy(fn (CommandAlert $a) => [$severityOrder[$a->severity] ?? 3, $a->opened_at?->timestamp ?? 0])
+            ->take(8)
+            ->values();
+
+        $status = $this->statusService->overall();
+        $freshness = $this->freshness->snapshot();
+
         return view('dashboard.index', [
             'stats' => $stats,
-            'alerts' => $this->alerts->alerts(),
+            'openAlerts' => $openAlerts,
+            'alertCounts' => $this->alertCounts(),
+            'status' => $status,
+            'freshness' => $freshness,
             'dashboardData' => $dashboardData,
             'topSekolah' => $this->dashboard->topSekolah(),
             'topPoskamling' => $this->dashboard->topPoskamling(),
@@ -79,5 +106,32 @@ class DashboardController extends Controller
             'securityMap' => $securityMap,
             'healthMap' => $healthMap,
         ]);
+    }
+
+    public function refresh(): RedirectResponse
+    {
+        $this->dashboard->clearCache();
+        $this->alerts->sync(force: true);
+
+        Cache::forget('command-center.status.overall');
+        Cache::forget('command-center.data-freshness');
+
+        return redirect()->back()
+            ->with('success', 'Data dashboard berhasil dimuat ulang dalam keadaan terbaru.');
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function alertCounts(): array
+    {
+        $base = CommandAlert::query()->whereIn('status', CommandAlert::openStatuses());
+
+        return [
+            'critical' => (clone $base)->where('severity', CommandAlert::SEVERITY_CRITICAL)->count(),
+            'warning' => (clone $base)->where('severity', CommandAlert::SEVERITY_WARNING)->count(),
+            'info' => (clone $base)->where('severity', CommandAlert::SEVERITY_INFO)->count(),
+            'total' => $base->count(),
+        ];
     }
 }

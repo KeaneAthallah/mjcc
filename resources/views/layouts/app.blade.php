@@ -63,6 +63,25 @@
                 <span class="ml-auto bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{{ $sidebarStats['kesehatan'] }}</span>
             </a>
 
+            <div class="px-5 py-2 text-[10px] uppercase tracking-widest opacity-40 font-bold">Command Center</div>
+            <a href="{{ route('kecamatan.overview') }}"
+               class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('kecamatan.*') ? 'bg-white/10 text-white border-amber-400' : 'text-white/65 border-transparent' }}">
+                <span class="w-[22px] text-center text-base">🧭</span>Intelijen Kecamatan
+            </a>
+            <a href="{{ route('alerts.index') }}"
+               class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('alerts.*') ? 'bg-white/10 text-white border-amber-400' : 'text-white/65 border-transparent' }}">
+                <span class="w-[22px] text-center text-base">🚨</span>Command Alerts
+                <span @class([
+                    'ml-auto text-[10px] px-2 py-0.5 rounded-full font-bold',
+                    'bg-amber-500 text-white' => (int) $sidebarStats['alerts'] > 0,
+                    'bg-emerald-600 text-white' => (int) $sidebarStats['alerts'] === 0,
+                ])>{{ $sidebarStats['alerts'] }}</span>
+            </a>
+            <a href="{{ route('search.index') }}"
+               class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('search.*') ? 'bg-white/10 text-white border-amber-400' : 'text-white/65 border-transparent' }}">
+                <span class="w-[22px] text-center text-base">🔎</span>Pencarian Intel
+            </a>
+
             <div class="px-5 py-2 text-[10px] uppercase tracking-widest opacity-40 font-bold">Informasi</div>
             <a href="{{ route('maps.index') }}"
                class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('maps.index') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
@@ -248,6 +267,62 @@
                 <span class="hidden sm:inline-flex items-center text-[12px] font-bold text-gray-700">
                     <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1.5"></span> LIVE
                 </span>
+
+                <form method="GET" action="{{ route('search.index') }}"
+                      class="hidden md:block">
+                    <input type="text" name="q" value="{{ request('q') }}" placeholder="🔍 Cari data intelijen..."
+                           class="w-52 focus:w-64 transition-all rounded-xl border border-gray-200 bg-gray-50 text-[12px] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400">
+                </form>
+
+@can('viewAny', \App\Models\CommandAlert::class)
+                    <div x-data="commandAlertMonitor()"
+                         data-count="{{ $sidebarStats['alerts'] }}"
+                         data-recent='@json($recentAlerts)'
+                         data-url="{{ route('alerts.summary') }}"
+                         @click.outside="open = false"
+                         class="relative">
+                        <button @click="open = !open"
+                                class="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100"
+                                title="Command Alerts">
+                            <span class="text-base">🔔</span>
+                            <span class="hidden md:inline text-[12px] font-bold">Alert</span>
+                            <span class="min-w-[20px] h-5 px-1.5 rounded-full {{ (int) $sidebarStats['alerts'] > 0 ? 'bg-amber-600' : 'bg-emerald-600' }} text-white text-[11px] font-extrabold flex items-center justify-center"
+                                  x-text="openCount">0</span>
+                        </button>
+                        <div x-show="open" x-cloak
+                             class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                <span class="text-[13px] font-extrabold text-gray-800">🚨 Command Alerts</span>
+                                <a href="{{ route('alerts.index') }}" class="text-[11px] font-bold text-emerald-600 hover:underline">Lihat Semua</a>
+                            </div>
+                            <div id="alert-dropdown-list" class="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                            @forelse ($recentAlerts as $recent)
+                                <a href="{{ $recent['url'] }}" @class([
+                                    'block px-4 py-3 border-l-4',
+                                    'bg-red-50 border-l-red-500' => $recent['severity'] === 'critical',
+                                    'bg-amber-50 border-l-amber-500' => $recent['severity'] === 'warning',
+                                    'bg-blue-50 border-l-blue-500' => $recent['severity'] === 'info',
+                                ])>
+                                    <div class="flex items-start gap-2">
+                                        <span class="mt-0.5 text-sm leading-none">{{ $recent['severity'] === 'critical' ? '🔴' : ($recent['severity'] === 'warning' ? '🟠' : '🔵') }}</span>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-[12px] font-bold text-gray-800 truncate">{{ $recent['title'] }}</div>
+                                            <div class="text-[11px] text-gray-500 mt-0.5">@if ($recent['kecamatan']) 📍 {{ $recent['kecamatan'] }} @endif @if ($recent['opened_human']) · {{ $recent['opened_human'] }} @endif</div>
+                                        </div>
+                                        <span @class([
+                                            'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full',
+                                            'bg-blue-100 text-blue-700' => $recent['status'] === 'baru',
+                                            'bg-gray-100 text-gray-500' => $recent['status'] !== 'baru',
+                                        ])>{{ $recent['status_label'] }}</span>
+                                    </div>
+                                </a>
+                            @empty
+                                <div class="px-4 py-6 text-center text-[12px] text-gray-400">Tidak ada alert terbuka</div>
+                            @endforelse
+                        </div>
+                        </div>
+                    </div>
+                @endcan
 
                 @can('viewAny', \App\Models\SosAlert::class)
                     <a href="{{ route('sos.index') }}"

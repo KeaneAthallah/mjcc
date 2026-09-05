@@ -88,6 +88,37 @@ class DashboardService
         return true;
     }
 
+    public function __construct() {}
+
+    /**
+     * Bersihkan seluruh cache ringkasan dashboard agar hit berikutnya
+     * memuat data terbaru (dipanggil dari aksi "Muat Ulang").
+     */
+    public function clearCache(): void
+    {
+        foreach ($this->cacheKeys() as $key) {
+            Cache::forget('dashboard.'.$key);
+        }
+    }
+
+    /**
+     * @return string[]
+     */
+    private function cacheKeys(): array
+    {
+        return [
+            'overview',
+            'comparison',
+            'infra',
+            'students',
+            'workforce',
+            'top.sekolah',
+            'top.poskamling',
+            'top.kesehatan',
+            'counts',
+        ];
+    }
+
     /**
      * Kabupaten-level overview statistics.
      *
@@ -96,11 +127,14 @@ class DashboardService
     public function overviewStats(): array
     {
         return $this->cached('overview', function () {
+            $goodConditions = config('command-center.good_conditions', ['baik']);
+
             return [
                 'kecamatan' => Kecamatan::count(),
                 'kelurahan' => Kelurahan::count(),
                 'population' => Kelurahan::sum('population'),
                 'total_sekolah' => School::count(),
+                'sekolah_baik' => School::whereIn('condition', $goodConditions)->count(),
                 'total_sd' => School::where('school_type', School::TYPE_SD)->count(),
                 'total_smp' => School::where('school_type', School::TYPE_SMP)->count(),
                 'total_siswa' => School::sum(DB::raw('students_male + students_female')),
@@ -108,8 +142,10 @@ class DashboardService
                 'total_polsek' => Polsek::count(),
                 'total_tipkamtikmas' => Tipkamtikmas::count(),
                 'total_poskamling' => Poskamling::count(),
+                'poskamling_aktif' => Poskamling::where('is_active', true)->count(),
                 'total_pasar' => Market::count(),
                 'total_faskes' => HealthFacility::count(),
+                'faskes_aktif' => HealthFacility::where('status', 'aktif')->count(),
                 'total_puskesmas' => HealthFacility::where('facility_type', HealthFacility::TYPE_PUSKESMAS)->count(),
                 'total_rs' => HealthFacility::where('facility_type', HealthFacility::TYPE_RS)->count(),
                 'total_pustu' => HealthFacility::where('facility_type', HealthFacility::TYPE_PUSTU)->count(),

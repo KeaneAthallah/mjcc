@@ -5,90 +5,166 @@
 @section('content')
 <div class="space-y-5 page-transition">
 
-    {{-- Welcome banner --}}
-    <div class="bg-gradient-to-r from-emerald-700 via-emerald-600 to-blue-700 rounded-2xl p-6 text-white shadow-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    {{-- Command header --}}
+    <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
-            <h1 class="text-xl sm:text-2xl font-extrabold">Selamat Datang, {{ $currentUser->name }}! 👋</h1>
-            <p class="text-emerald-100 text-[13px] mt-1">DASHBOARD PEMANTAUAN KABUPATEN MOROWALI</p>
-            <p class="text-emerald-50/80 text-[12px] mt-1">Total penduduk: <strong class="text-white">{{ number_format($stats['population'], 0, ',', '.') }} jiwa</strong> · {{ $stats['kecamatan'] }} Kecamatan · {{ $stats['kelurahan'] }} Kelurahan/Desa</p>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-gray-900">Selamat Datang, {{ $currentUser->name }} 👋</h1>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[12px] text-gray-500">
+                <span>📊 Total penduduk: <strong class="text-gray-800">{{ number_format($stats['population'], 0, ',', '.') }} jiwa</strong></span>
+                <span>🏙️ {{ $stats['kecamatan'] }} Kecamatan</span>
+                <span>🏘️ {{ $stats['kelurahan'] }} Kelurahan/Desa</span>
+            </div>
         </div>
-        <div class="flex gap-2 flex-wrap">
-            <a href="{{ route('education.dashboard') }}" class="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[12px] font-bold">🎓 Pendidikan</a>
-            <a href="{{ route('security.dashboard') }}" class="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[12px] font-bold">🛡️ Ketertiban</a>
-            <a href="{{ route('health.dashboard') }}" class="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[12px] font-bold">🏥 Kesehatan</a>
-            <a href="{{ route('maps.index') }}" class="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[12px] font-bold">🗺️ Peta</a>
+        <div class="flex items-center gap-2">
+            <div class="text-right">
+                <div class="text-[11px] uppercase tracking-wide font-bold text-gray-400">Data terakhir diperbarui</div>
+                <div class="text-[13px] font-bold text-gray-700">
+                    @if ($freshness['last_update'])
+                        {{ \Illuminate\Support\Carbon::parse($freshness['last_update'])->translatedFormat('d M Y, H:i') }}
+                    @else
+                        Belum ada data
+                    @endif
+                </div>
+                <x-badge color="{{ $freshness['status'] === 'terbaru' ? 'green' : ($freshness['status'] === 'perlu_diperbarui' ? 'amber' : ($freshness['status'] === 'data_lama' ? 'red' : 'gray')) }}">
+                    {{ $freshness['label'] }}
+                </x-badge>
+            </div>
+            <form method="POST" action="{{ route('dashboard.refresh') }}">
+                @csrf
+                <x-button type="submit" variant="outline" size="sm" title="Muat ulang data dashboard">
+                    🔄 Muat Ulang
+                </x-button>
+            </form>
+
+            <div x-data="dashboardAutoRefresh()"
+                 data-seconds="{{ (int) config('command-center.dashboard.live_refresh_seconds', 300) }}"
+                 data-default="{{ config('command-center.dashboard.live_refresh_default', true) ? '1' : '0' }}"
+                 data-url="{{ route('dashboard.refresh') }}">
+                <button type="button"
+                        @click="toggle()"
+                        class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[12px] font-bold transition"
+                        :class="enabled ? 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+                        :title="enabled ? 'Auto-refresh aktif — data dimuat ulang otomatis' : 'Auto-refresh nonaktif'">
+                    <span x-text="enabled ? '⏸' : '▶'"></span>
+                    <span x-text="enabled ? 'Auto' : 'Auto Off'"></span>
+                    <span x-show="enabled" class="tabular-nums font-mono opacity-90" x-text="remainingLabel"></span>
+                </button>
+            </div>
+
+            <a href="{{ route('education.dashboard') }}" class="px-4 py-2 rounded-xl bg-emerald-100 text-emerald-800 text-[12px] font-bold hover:bg-emerald-200">🎓 Pendidikan</a>
+            <a href="{{ route('security.dashboard') }}" class="px-4 py-2 rounded-xl bg-blue-100 text-blue-800 text-[12px] font-bold hover:bg-blue-200">🛡️ Ketertiban</a>
+            <a href="{{ route('health.dashboard') }}" class="px-4 py-2 rounded-xl bg-red-100 text-red-800 text-[12px] font-bold hover:bg-red-200">🏥 Kesehatan</a>
         </div>
     </div>
 
-    {{-- Stat cards --}}
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <x-stat-card label="Sekolah (Total)" value="{{ number_format($stats['total_sekolah']) }}" icon="🏫" color="green"/>
-        <x-stat-card label="Siswa" value="{{ number_format($stats['total_siswa']) }}" icon="🎓" color="blue" footer="{{ $stats['total_guru'] }} Guru"/>
-        <x-stat-card label="Fasilitas Kesehatan" value="{{ number_format($stats['total_faskes']) }}" icon="🏥" color="green"/>
-        <x-stat-card label="Tenaga Medis" value="{{ number_format($stats['total_dokter'] + $stats['total_perawat'] + $stats['total_bidan']) }}" icon="🩺" color="blue" footer="{{ $stats['total_dokter'] }} Dokter"/>
-        <x-stat-card label="Tipkamtikmas" value="{{ number_format($stats['total_tipkamtikmas']) }}" icon="🪖" color="red"/>
-        <x-stat-card label="Poskamling & Pasar" value="{{ number_format($stats['total_poskamling'] + $stats['total_pasar']) }}" icon="🏪" color="amber"/>
-    </div>
+    {{-- STATUS MOROWALI --}}
+    <x-dashboard-section title="Status Morowali" subtitle="Skor 0–100 dari agregasi data nyata" icon="🛰️" :pad="false">
+        <div class="p-5">
+            <div class="flex flex-col lg:flex-row lg:items-center gap-6">
+                <div class="flex items-center gap-5 lg:w-72 shrink-0 rounded-2xl {{ $status['no_data'] ? 'bg-gray-50' : 'bg-gray-900' }} p-5">
+                    <div class="flex-1">
+                        <div class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">{{ config('command-center.overall.label') }}</div>
+                        <x-status-indicator :status="$status['status']" :score="$status['score']" class="mt-2" label="{{ $status['label'] }}"/>
+                        @if (! $status['no_data'])
+                            <p class="text-[11px] text-gray-300 mt-2">Berdasarkan {{ collect($status['sectors'])->filter(fn ($s) => $s !== 'tidak_ada_data')->count() }} sektor dengan data.</p>
+                        @else
+                            <p class="text-[11px] text-gray-400 mt-2">Belum ada cukup data untuk menilai.</p>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    @foreach ($status['sector_details'] as $sector)
+                        <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[12px] font-bold text-gray-700">{{ $sector['label'] }}</span>
+                                <x-status-indicator :status="$sector['status']" :score="$sector['score']" compact label="{{ $sector['score'] !== null ? number_format($sector['score']) : '—' }}"/>
+                            </div>
+                            <div class="space-y-1.5">
+                                @forelse ($sector['rules'] as $rule)
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1">
+                                            <div class="flex justify-between text-[10px] text-gray-500">
+                                                <span class="truncate pr-2">{{ $rule['label'] }}</span>
+                                                <span>{{ $rule['score'] !== null ? number_format($rule['score']).'%' : 'tdk ada data' }}</span>
+                                            </div>
+                                            <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-0.5">
+                                                <div class="h-full {{ $rule['score'] !== null && $rule['score'] >= 85 ? 'bg-emerald-500' : ($rule['score'] !== null && $rule['score'] >= 70 ? 'bg-amber-500' : ($rule['score'] !== null && $rule['score'] >= 50 ? 'bg-orange-500' : 'bg-red-500')) }}"
+                                                     style="width: {{ min($rule['score'] ?? 0, 100) }}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <p class="text-[11px] text-gray-400">Tidak ada data sektor.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </x-dashboard-section>
+
+    {{-- Executive KPI --}}
+    <x-kpi-grid cols="6" label="Indikator Kunci Utama">
+        <x-metric-comparison label="Total Sekolah" value="{{ number_format($stats['total_sekolah']) }}" icon="🏫" color="green" footer="SD {{ number_format($stats['total_sd']) }} · SMP {{ number_format($stats['total_smp']) }} · 🏗️ Baik {{ number_format($stats['sekolah_baik']) }}"/>
+        <x-metric-comparison label="Total Siswa" value="{{ number_format($stats['total_siswa']) }}" icon="🎓" color="blue" footer="Guru: {{ number_format($stats['total_guru']) }}"/>
+        <x-metric-comparison label="Fasilitas Kesehatan" value="{{ number_format($stats['total_faskes']) }}" icon="🏥" color="green" footer="Aktif {{ number_format($stats['faskes_aktif']) }}" />
+        <x-metric-comparison label="Tenaga Kesehatan" value="{{ number_format($stats['total_dokter'] + $stats['total_perawat'] + $stats['total_bidan']) }}" icon="🩺" color="blue" footer="Dokter {{ number_format($stats['total_dokter']) }} · Perawat {{ number_format($stats['total_perawat']) }} · Bidan {{ number_format($stats['total_bidan']) }}"/>
+        <x-metric-comparison label="Total Poskamling" value="{{ number_format($stats['total_poskamling']) }}" icon="🛡️" color="{{ $stats['poskamling_aktif'] < $stats['total_poskamling'] ? 'red' : 'green' }}" footer="Aktif {{ number_format($stats['poskamling_aktif']) }} · ⚠ Nonaktif {{ number_format($stats['total_poskamling'] - $stats['poskamling_aktif']) }}"/>
+        <x-metric-comparison label="Total Polsek" value="{{ number_format($stats['total_polsek']) }}" icon="🚓" color="amber"/>
+        <x-metric-comparison label="Kecamatan" value="{{ number_format($stats['kecamatan']) }}" icon="🏙️" color="emerald" footer=""/>
+        <x-metric-comparison label="Kelurahan / Desa" value="{{ number_format($stats['kelurahan']) }}" icon="🏘️" color="teal"/>
+        <x-metric-comparison label="Pasar" value="{{ number_format($stats['total_pasar']) }}" icon="🏪" color="violet"/>
+    </x-kpi-grid>
 
     {{-- Perlu Perhatian --}}
-    @php
-        $alertCount = collect($alerts['critical'])->count() + collect($alerts['warning'])->count();
-    @endphp
-    <div class="rounded-2xl border {{ $alertCount > 0 ? 'border-red-200 bg-red-50/50' : 'border-emerald-200 bg-emerald-50/50' }} p-5 space-y-3">
-        <div class="flex items-center justify-between">
-            <h3 class="font-extrabold text-gray-900 text-[14px] flex items-center gap-2">
-                <span class="text-lg">{{ $alertCount > 0 ? '⚠️' : '✅' }}</span> Perlu Perhatian
-            </h3>
-            <x-badge color="{{ $alertCount > 0 ? 'red' : 'green' }}">{{ $alertCount > 0 ? $alertCount.' isu' : 'Semua aman' }}</x-badge>
-        </div>
-        @if ($alertCount > 0)
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                @foreach (array_merge($alerts['critical'], $alerts['warning']) as $alert)
-                    <div class="flex items-start gap-3 rounded-xl bg-white border border-gray-100 p-3">
-                        <span class="mt-0.5 text-base">
-                            {{ $alert['severity'] === 'critical' ? '🔴' : '🟡' }}
-                        </span>
-                        <div>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-[12px] font-bold text-gray-800">{{ $alert['title'] }}</span>
-                                <x-badge color="{{ $alert['severity'] === 'critical' ? 'red' : 'amber' }}">{{ $alert['sector'] }}</x-badge>
-                            </div>
-                            <p class="text-[12px] text-gray-500 mt-0.5">{{ $alert['detail'] }}</p>
-                        </div>
+    <x-dashboard-section title="Perlu Perhatian" icon="⚠️"
+                         subtitle="Masalah terdeteksi dari data nyata — urut sesuai tingkat keparahan"
+                         :pad="false">
+        <x-slot:actions>
+            <x-alert-summary-badges :counts="$alertCounts" :link="route('alerts.index')"/>
+        </x-slot:actions>
+        @if ($openAlerts->isNotEmpty())
+            <div class="divide-y divide-gray-50">
+                @foreach ($openAlerts as $alert)
+                    <div class="p-3">
+                        <x-command-alert :alert="$alert" :transition="false"/>
                     </div>
                 @endforeach
             </div>
+            <div class="px-5 py-3 border-t border-gray-100 text-right">
+                <a href="{{ route('alerts.index') }}" class="text-[12px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline">
+                    Lihat semua alert →
+                </a>
+            </div>
         @else
-            <p class="text-[13px] text-gray-500">Tidak ada isu yang memerlukan perhatian saat ini.</p>
+            <div class="p-5 text-center">
+                <div class="text-4xl mb-2">✅</div>
+                <h4 class="text-[14px] font-extrabold text-gray-700">Semua aman</h4>
+                <p class="text-[12px] text-gray-400 mt-1">Tidak ada masalah yang memerlukan perhatian saat ini.</p>
+            </div>
         @endif
-    </div>
+    </x-dashboard-section>
 
     {{-- Charts row 1 --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <x-card title="Perbandingan Sektor per Kecamatan" icon="📊" class="lg:col-span-2">
-            <div class="h-72">
-                <canvas id="chart-comparison"></canvas>
-            </div>
-        </x-card>
-        <x-card title="Komposisi Infrastruktur" icon="🧮">
-            <div class="h-72">
-                <canvas id="chart-infra"></canvas>
-            </div>
-        </x-card>
+        <x-chart-card title="Perbandingan Sektor per Kecamatan" subtitle="Sekolah · Tipkamtikmas · Faskes" icon="📊" class="lg:col-span-2">
+            <div class="h-72"><canvas id="chart-comparison"></canvas></div>
+        </x-chart-card>
+        <x-chart-card title="Komposisi Infrastruktur" subtitle="Pendidikan · Ketertiban · Kesehatan" icon="🧮">
+            <div class="h-72"><canvas id="chart-infra"></canvas></div>
+        </x-chart-card>
     </div>
 
     {{-- Charts row 2 --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <x-card title="Jumlah Siswa per Kecamatan" icon="🎓" class="lg:col-span-2">
-            <div class="h-72">
-                <canvas id="chart-students"></canvas>
-            </div>
-        </x-card>
-        <x-card title="Tenaga Kesehatan" icon="🩺">
-            <div class="h-72">
-                <canvas id="chart-workforce"></canvas>
-            </div>
-        </x-card>
+        <x-chart-card title="Jumlah Siswa per Kecamatan" subtitle="Laki-laki & Perempuan" icon="🎓" class="lg:col-span-2">
+            <div class="h-72"><canvas id="chart-students"></canvas></div>
+        </x-chart-card>
+        <x-chart-card title="Tenaga Kesehatan" subtitle="Dokter · Perawat · Bidan" icon="🩺">
+            <div class="h-72"><canvas id="chart-workforce"></canvas></div>
+        </x-chart-card>
     </div>
 
     {{-- Rankings --}}

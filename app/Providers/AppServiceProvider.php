@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\CommandAlert;
 use App\Models\HealthFacility;
 use App\Models\Kelurahan;
 use App\Models\Market;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\Factory as Http;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -106,7 +108,32 @@ class AppServiceProvider extends ServiceProvider
                     + Kelurahan::count()
                 ),
                 'kesehatan' => (string) HealthFacility::count(),
+                'alerts' => (string) Cache::remember('command-center.sidebar.alerts', 60, fn () => CommandAlert::query()
+                    ->whereIn('status', CommandAlert::openStatuses())
+                    ->count()),
             ]);
+
+            $view->with('recentAlerts', Cache::remember('command-center.sidebar.alerts.recent', 60, function () {
+                return CommandAlert::query()
+                    ->with('kecamatan:id,name')
+                    ->whereIn('status', CommandAlert::openStatuses())
+                    ->latest('opened_at')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn (CommandAlert $a) => [
+                        'id' => $a->id,
+                        'title' => $a->title,
+                        'severity' => $a->severity,
+                        'sector_key' => $a->sector_key,
+                        'status' => $a->status,
+                        'status_label' => $a->statusLabel(),
+                        'kecamatan' => $a->kecamatan?->name,
+                        'url' => route('alerts.show', $a),
+                        'map_url' => $a->mapUrl(),
+                        'opened_human' => $a->opened_at?->diffForHumans(),
+                    ])
+                    ->all();
+            }));
 
             $user = auth()->user();
 

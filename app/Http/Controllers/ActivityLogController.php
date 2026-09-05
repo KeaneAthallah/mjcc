@@ -33,6 +33,7 @@ class ActivityLogController extends Controller
                 ActivityLog::ACTION_SOS_RESPONDING,
                 ActivityLog::ACTION_SOS_RESOLVED,
                 ActivityLog::ACTION_SOS_CANCELLED,
+                ActivityLog::ACTION_ALERT_STATUS,
             ],
             'resources' => collect([
                 'School', 'HealthFacility', 'Kecamatan', 'Kelurahan', 'Polsek',
