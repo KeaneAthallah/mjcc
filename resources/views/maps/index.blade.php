@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeKecamatan = '';
     let activeSource = '';
     let map = null;
+    const focus = new URLSearchParams(location.search).get('focus');
 
     const colorBySector = {
         pendidikan: '#10b981',
@@ -101,6 +102,30 @@ document.addEventListener('DOMContentLoaded', () => {
         kesehatan: '#dc2626',
         eksternal: '#7c3aed',
     };
+
+    function focusTarget(markers) {
+        return M.findFocus(markers, focus);
+    }
+
+    function openFocusPopup(markers) {
+        const target = focusTarget(markers);
+        if (!target || !map) {
+            return;
+        }
+        map.once('zoomend', () => {
+            setTimeout(() => {
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Marker) {
+                        const ll = layer.getLatLng();
+                        if (Math.round(ll.lat * 10000) === Math.round(Number(target.latitude) * 10000)
+                            && Math.round(ll.lng * 10000) === Math.round(Number(target.longitude) * 10000)) {
+                            layer.openPopup();
+                        }
+                    }
+                });
+            }, 200);
+        });
+    }
 
     function filteredMarkers() {
         return allMarkers.filter((m) => {
@@ -136,17 +161,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderMap() {
         const markers = filteredMarkers();
+        const target = focusTarget(markers);
         if (!map) {
             map = M.createMap('combined-map', markers, {
                 resize: true,
-                cluster: true,
-                center: [-3.25, 121.85],
+                cluster: !target,
+                fitBounds: !target,
+                center: target ? [Number(target.latitude), Number(target.longitude)] : [-3.25, 121.85],
+                zoom: target ? 14 : 9,
             });
         } else {
-            M.renderMarkers(map, markers, { cluster: true });
+            M.renderMarkers(map, markers, { cluster: !focusTarget(markers) });
         }
         document.getElementById('marker-count').textContent = markers.length;
         renderLegend();
+        openFocusPopup(markers);
     }
 
     document.querySelectorAll('[data-sector]').forEach((btn) => {

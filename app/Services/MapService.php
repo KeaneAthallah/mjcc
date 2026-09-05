@@ -13,6 +13,7 @@ use App\Models\School;
 use App\Models\Tipkamtikmas;
 use App\Support\TargetRegionService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Provides data for the combined map ("Peta Gabungan") so all sector records
@@ -22,11 +23,30 @@ class MapService
 {
     /**
      * All map-enabled records across all sectors, optionally filtered by
-     * kecamatan.
+     * kecamatan. Results are cached briefly; pass `$force = true` (or the
+     * `refresh=1` query parameter on the data endpoint) to bypass.
      *
      * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>}
      */
-    public function combined(?int $kecamatanId = null): array
+    public function combined(?int $kecamatanId = null, bool $force = false): array
+    {
+        $cacheKey = 'command-center.maps.'.($kecamatanId ?: 'all');
+
+        if ($force) {
+            Cache::forget($cacheKey);
+        }
+
+        return Cache::remember(
+            $cacheKey,
+            (int) config('command-center.cache.map_ttl', 60),
+            fn () => $this->buildPayload($kecamatanId),
+        );
+    }
+
+    /**
+     * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>}
+     */
+    private function buildPayload(?int $kecamatanId = null): array
     {
         $filter = fn ($q) => $kecamatanId ? $q->where('kecamatan_id', $kecamatanId) : $q;
 
@@ -41,6 +61,8 @@ class MapService
             ->each(function (School $s) use (&$markers) {
                 $markers->push([
                     'name' => $s->name,
+                    'id' => $s->id,
+                    'slug' => 'school',
                     'sector' => 'pendidikan',
                     'category' => $s->school_type,
                     'latitude' => (float) $s->latitude,
@@ -64,6 +86,8 @@ class MapService
             ->each(function (Polsek $p) use (&$markers) {
                 $markers->push([
                     'name' => $p->name,
+                    'id' => $p->id,
+                    'slug' => 'polsek',
                     'sector' => 'ketertiban',
                     'category' => 'polsek',
                     'latitude' => (float) $p->latitude,
@@ -84,6 +108,8 @@ class MapService
             ->each(function (Market $m) use (&$markers) {
                 $markers->push([
                     'name' => $m->name,
+                    'id' => $m->id,
+                    'slug' => 'market',
                     'sector' => 'ketertiban',
                     'category' => 'pasar',
                     'latitude' => (float) $m->latitude,
@@ -101,6 +127,8 @@ class MapService
             ->each(function (Poskamling $p) use (&$markers) {
                 $markers->push([
                     'name' => $p->name,
+                    'id' => $p->id,
+                    'slug' => 'poskamling',
                     'sector' => 'ketertiban',
                     'category' => 'poskamling',
                     'latitude' => (float) $p->latitude,
@@ -118,6 +146,8 @@ class MapService
             ->each(function (Tipkamtikmas $t) use (&$markers) {
                 $markers->push([
                     'name' => $t->title,
+                    'id' => $t->id,
+                    'slug' => 'tipkamtikmas',
                     'sector' => 'ketertiban',
                     'category' => 'tipkamtikmas',
                     'latitude' => (float) $t->latitude,
@@ -135,6 +165,8 @@ class MapService
             ->each(function (Kelurahan $k) use (&$markers) {
                 $markers->push([
                     'name' => $k->name,
+                    'id' => $k->id,
+                    'slug' => 'kelurahan',
                     'sector' => 'ketertiban',
                     'category' => 'kelurahan',
                     'latitude' => (float) $k->latitude,
@@ -153,6 +185,8 @@ class MapService
             ->each(function (HealthFacility $f) use (&$markers) {
                 $markers->push([
                     'name' => $f->name,
+                    'id' => $f->id,
+                    'slug' => 'health_facility',
                     'sector' => 'kesehatan',
                     'category' => $f->facility_type,
                     'latitude' => (float) $f->latitude,
@@ -188,6 +222,8 @@ class MapService
 
                 $markers->push([
                     'name' => $cr->name ?? $cr->external_id,
+                    'id' => $cr->id,
+                    'slug' => 'crawl-'.($slug ?? 'external'),
                     'sector' => 'eksternal',
                     'category' => 'ext-'.($slug ?? 'external'),
                     'latitude' => (float) $cr->latitude,

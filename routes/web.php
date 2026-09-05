@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\CommandAlertController;
 use App\Http\Controllers\CrawlerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EducationDashboardController;
 use App\Http\Controllers\HealthDashboardController;
 use App\Http\Controllers\HealthFacilityController;
 use App\Http\Controllers\KecamatanController;
+use App\Http\Controllers\KecamatanIntelligenceController;
 use App\Http\Controllers\KelurahanController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\MarketController;
@@ -15,6 +17,7 @@ use App\Http\Controllers\PolsekController;
 use App\Http\Controllers\PoskamlingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SchoolController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SecurityDashboardController;
 use App\Http\Controllers\SosController;
 use App\Http\Controllers\SubjectController;
@@ -34,6 +37,20 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/dashboard/refresh', [DashboardController::class, 'refresh'])->name('dashboard.refresh');
+
+    // Command Center Alerts (persisted operational alerts)
+    Route::get('/alerts/summary', [CommandAlertController::class, 'summary'])->name('alerts.summary');
+    Route::get('/alerts', [CommandAlertController::class, 'index'])->name('alerts.index');
+    Route::post('/alerts/{alert}/status', [CommandAlertController::class, 'updateStatus'])->name('alerts.status');
+    Route::get('/alerts/{alert}', [CommandAlertController::class, 'show'])->name('alerts.show');
+
+    // Kecamatan Intelligence (rangking + profil)
+    Route::get('/kecamatan', [KecamatanIntelligenceController::class, 'index'])->name('kecamatan.overview');
+    Route::get('/kecamatan/{kecamatan}', [KecamatanIntelligenceController::class, 'show'])->name('kecamatan.show');
+
+    // Keystone Search
+    Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 
     // Pendidikan
     Route::get('/education', [EducationDashboardController::class, 'index'])->name('education.dashboard');
@@ -69,6 +86,7 @@ Route::middleware('auth')->group(function () {
 
     // Peta Gabungan
     Route::get('/maps', [MapController::class, 'index'])->name('maps.index');
+    Route::get('/maps/data', [MapController::class, 'data'])->name('maps.data');
 
     // Data Eksternal (Government Data Crawler)
     Route::get('/crawler', [CrawlerController::class, 'index'])->name('crawler.dashboard');

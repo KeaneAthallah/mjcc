@@ -160,6 +160,14 @@ export function renderMarkers(map, markers, options = {}) {
     return map;
 }
 
+export function findFocus(markers, focus) {
+    if (!focus) {
+        return null;
+    }
+    const [slug, id] = focus.split(':');
+    return markers.find((m) => m.slug === slug && String(m.id) === String(id)) ?? null;
+}
+
 export function legendItems(categories) {
     return categories.map((category) => ({
         category,

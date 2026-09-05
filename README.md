@@ -18,10 +18,17 @@
 Dibangun dengan **Laravel 13** (PHP 8.3+) dan dilengkapi **Sanctum** untuk autentikasi API bearer token, serta **Pest** untuk pengujian.
 
 ### Fitur Utama
+- 🏛️ **Status Morowali (Skor 0–100)** — skor kesehatan wilayah dari agregasi data nyata lintas sektor (Pendidikan, Ketertiban, Kesehatan) dengan aturan yang transparan dan dapat dikonfigurasi.
+- 🚨 **Command Alerts** — masalah operasional terdeteksi otomatis dari data lapangan, ditindaklanjuti lewat rangkaian kerja BARU → DITINJAU → DITANGANI → SELESAI, dan ditautkan langsung ke peta.
+- 🧭 **Intelijen Kecamatan** — status, skor, dan agregasi operasional per kecamatan, diurutkan berdasarkan data nyata.
+- 🔎 **Pencarian Intelijen** — pencarian lintas seluruh data master (sekolah, faskes, keamanan, pasar, kecamatan, kelurahan).
+- 🏛️ **Status Keseluruhan & Kesehatan Data** — indikator kunci, peringkat sektor, dan status kesegaran data berdasarkan waktu pembaruan nyata.
+- ⏱️ **Auto-refresh Live** — dashboard pusat kendali memuat ulang data secara otomatis (interval dapat dikonfigurasi, dapat diaktifkan/dinonaktifkan per operator).
 - 🎓 **Dashboard Pendidikan** — statistik SD/SMP, jumlah siswa & guru, rasio guru, progress fasilitas.
 - 🛡️ **Dashboard Ketertiban** — polsek, tipkamtikmas, poskamling, pasar.
 - 🏥 **Dashboard Kesehatan** — puskesmas, pustu, rumah sakit, posyandu, tenaga kesehatan.
 - 🗺️ **Peta Gabungan** — visualisasi semua lokasi di peta interaktif, bisa disaring per sektor/kecamatan.
+- 🔔 **Notifikasi Real-time** — lonceng alert (Command Alerts) dan pemantauan SOS yang memperbarui diri lewat polling HTTP.
 - 🗂️ **Data Master** — kecamatan, kelurahan/desa, mata pelajaran, sekolah, polsek, tipkamtikmas, poskamling, pasar, fasilitas kesehatan.
 - 👤 **Manajemen Pengguna & Role** — `admin`, `operator`, `viewer` (authorization policy + Form Request defense-in-depth).
 - ✉️ **Registrasi Publik & Verifikasi Email** — pendaftaran mandiri lewat API (role selalu diset `viewer` oleh backend) dikonfirmasi dengan kode verifikasi 6 digit sekali pakai yang dikirim via email.
@@ -83,7 +90,7 @@ app/
 │   └── Responses/ApiResponse.php   # Envelope JSON standar
 ├── Models/                   # Eloquent models
 ├── Policies/                 # Authorization policies
-├── Services/                 # Dashboard, Alert, Map, ActivityLog services
+├── Services/                 # Command center, dashboard, alert, map, crawler services
 └── Support/Access.php        # Matriks role admin/operator/viewer
 
 routes/
@@ -137,7 +144,7 @@ Buka `http://localhost:8000` pada browser. Untuk pengembangan frontend secara ho
 php artisan test --compact   # atau: vendor/bin/pest
 ```
 
-Suite mencakup pengujian web yang sudah ada plus pengujian API (autentikasi, registrasi & verifikasi email, otorisasi per role, CRUD, trash/restore, dashboard, peta, audit, profil, crawler).
+Suite mencakup pengujian web (dashboard, command center, intelijen kecamatan, search, peta, SOS, CRUD, trash/restore, audit, profil, crawler) plus pengujian API (autentikasi, registrasi & verifikasi email, otorisasi per role, dashboard, peta, crawler).
 
 ---
 
@@ -166,6 +173,7 @@ Setiap request selain `login`, `register`, `email/verify`, dan `email/verificati
 | Melihat data & dashboard | ✅ | ✅ | ✅ |
 | CRUD data operasional | ✅ | ✅ | ❌ |
 | Restore soft-delete | ✅ | ✅ | ❌ |
+| Kelola status alert (follow-up) | ✅ | ✅ | ❌ |
 | Kelola user, kecamatan, audit | ✅ | ❌ | ❌ |
 | Hapus permanen (force-delete) | ✅ | ❌ | ❌ |
 

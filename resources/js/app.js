@@ -134,6 +134,186 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // Command alert bell: polls the open-alert summary, updates the badge,
+    // renders the dropdown list, and toasts when new alerts appear.
+    Alpine.data('commandAlertMonitor', () => ({
+        open: false,
+        openCount: 0,
+        recent: [],
+        url: '',
+        timer: null,
+        init() {
+            this.openCount = Number(this.$el.dataset.count ?? 0);
+            this.recent = this.$el.dataset.recent ? JSON.parse(this.$el.dataset.recent) : [];
+            this.url = this.$el.dataset.url || '';
+            this.render();
+            this.start();
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this.stop();
+                } else {
+                    this.start();
+                }
+            });
+        },
+        start() {
+            this.stop();
+            this.poll();
+            this.timer = setInterval(() => this.poll(), 20000);
+        },
+        stop() {
+            if (this.timer) {
+                clearInterval(this.timer);
+                this.timer = null;
+            }
+        },
+        async poll() {
+            if (!this.url) {
+                return;
+            }
+            try {
+                const res = await fetch(this.url, { headers: { Accept: 'application/json' } });
+                if (!res.ok) {
+                    return;
+                }
+                const data = await res.json();
+                const total = Number(data.counts?.total_open ?? 0);
+                const previous = this.openCount;
+                this.openCount = total;
+                this.recent = Array.isArray(data.recent) ? data.recent : [];
+                this.render();
+                if (total > previous) {
+                    const root = document.querySelector('[x-data="notifications()"]');
+                    if (root && root.__x) {
+                        root.__x.$data.push('warning', `${total} command alert sedang terbuka.`);
+                    }
+                }
+            } catch (e) {
+                // transient network error: keep the current badge and list
+            }
+        },
+        render() {
+            const list = document.getElementById('alert-dropdown-list');
+            if (!list) {
+                return;
+            }
+            const sev = {
+                critical: { icon: '🔴', soft: 'bg-red-50', border: 'border-l-red-500' },
+                warning: { icon: '🟠', soft: 'bg-amber-50', border: 'border-l-amber-500' },
+                info: { icon: '🔵', soft: 'bg-blue-50', border: 'border-l-blue-500' },
+            };
+            if (!this.recent.length) {
+                list.innerHTML = '<div class="px-4 py-6 text-center text-[12px] text-gray-400">Tidak ada alert terbuka</div>';
+                return;
+            }
+            list.innerHTML = this.recent.map((a) => {
+                const cfg = sev[a.severity] ?? sev.info;
+                return `<a href="${a.url}" class="block px-4 py-3 ${cfg.soft} ${cfg.border} border-l-4 hover:bg-gray-50">
+                            <div class="flex items-start gap-2">
+                                <span class="mt-0.5 text-sm leading-none">${cfg.icon}</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-[12px] font-bold text-gray-800 truncate">${a.title}</div>
+                                    <div class="text-[11px] text-gray-500 mt-0.5">${a.kecamatan ? '📍 ' + a.kecamatan : ''} ${a.opened_human ? '· ' + a.opened_human : ''}</div>
+                                </div>
+                                <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${a.status === 'baru' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}">${a.status_label}</span>
+                            </div>
+                        </a>`;
+            }).join('');
+        },
+    }));
+
+    // Dashboard command center: auto-refreshes the overview data periodically
+    // so it stays live without manual reloads. The preference persists in
+    // localStorage and the countdown restarts when the tab regains focus.
+    Alpine.data('dashboardAutoRefresh', () => ({
+        enabled: true,
+        remaining: 0,
+        seconds: 300,
+        url: '',
+        timer: null,
+        init() {
+            this.seconds = Math.max(Number(this.$el.dataset.seconds ?? 300), 10);
+            this.url = this.$el.dataset.url || '';
+            const defaultOn = this.$el.dataset.default === '1';
+            let saved = null;
+            try {
+                saved = localStorage.getItem('mjcc:auto-refresh');
+            } catch (e) {
+                saved = null;
+            }
+            this.enabled = saved === null ? defaultOn : saved === 'on';
+            this.remaining = this.seconds;
+            if (this.enabled) {
+                this.start();
+            }
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    this.stop();
+                } else {
+                    this.remaining = this.seconds;
+                    if (this.enabled) {
+                        this.start();
+                    }
+                }
+            });
+        },
+        get remainingLabel() {
+            const m = Math.floor(this.remaining / 60);
+            const s = String(this.remaining % 60).padStart(2, '0');
+            return `${m}:${s}`;
+        },
+        start() {
+            this.stop();
+            this.timer = setInterval(() => {
+                this.remaining -= 1;
+                if (this.remaining <= 0) {
+                    this.remaining = this.seconds;
+                    this.refresh();
+                }
+            }, 1000);
+        },
+        stop() {
+            if (this.timer) {
+                clearInterval(this.timer);
+                this.timer = null;
+            }
+        },
+        toggle() {
+            this.enabled = !this.enabled;
+            this.remaining = this.seconds;
+            try {
+                localStorage.setItem('mjcc:auto-refresh', this.enabled ? 'on' : 'off');
+            } catch (e) {
+                // storage unavailable: preference applies for this session only
+            }
+            if (this.enabled) {
+                this.start();
+            } else {
+                this.stop();
+            }
+        },
+        async refresh() {
+            if (!this.url) {
+                return;
+            }
+            try {
+                const res = await fetch(this.url, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': window.csrfToken ?? '',
+                    },
+                });
+                if (!res.ok) {
+                    return;
+                }
+                window.location.reload();
+            } catch (e) {
+                // transient network error: retry on the next interval
+            }
+        },
+    })),
+
     // Live SOS command center (index): polls stat counts, the open-alert map,
     // and the list so the page updates with no manual refresh. Filters/paging
     // from the current URL query string are preserved.
