@@ -16,11 +16,9 @@ export const categoryConfig = {
     'Rumah Sakit': { sector: 'kesehatan', color: '#dc2626', emoji: '🏨', label: 'Rumah Sakit' },
     Posyandu: { sector: 'kesehatan', color: '#3b82f6', emoji: '👶', label: 'Posyandu' },
     sos: { sector: 'ketertiban', color: '#dc2626', emoji: '🆘', label: 'SOS Darurat' },
-    'ext-ats': { sector: 'eksternal', color: '#8b5cf6', emoji: '👥', label: 'ATS' },
-    'ext-dapo': { sector: 'eksternal', color: '#7c3aed', emoji: '🏫', label: 'DAPO' },
-    'ext-sp2kp': { sector: 'eksternal', color: '#6d28d9', emoji: '🏪', label: 'PIHPS BI' },
-    'ext-bps': { sector: 'eksternal', color: '#a855f7', emoji: '📊', label: 'BPS' },
-    'ext-external': { sector: 'eksternal', color: '#64748b', emoji: '📡', label: 'Eksternal' },
+    'data-publik-pendidikan': { sector: 'pendidikan', color: '#0d9488', emoji: '📊', label: 'Data Publik' },
+    'data-publik-kesehatan': { sector: 'kesehatan', color: '#f97316', emoji: '📊', label: 'Data Publik' },
+    'data-publik-keamanan': { sector: 'ketertiban', color: '#7c3aed', emoji: '📊', label: 'Data Publik' },
 };
 
 function iconFor(category, size = 28) {

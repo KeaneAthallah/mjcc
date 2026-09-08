@@ -25,7 +25,6 @@
                                     'pendidikan' => ['label' => '🎓 Pendidikan', 'color' => '#10b981'],
                                     'ketertiban' => ['label' => '🛡️ Ketertiban', 'color' => '#2563eb'],
                                     'kesehatan' => ['label' => '🏥 Kesehatan', 'color' => '#dc2626'],
-                                    'eksternal' => ['label' => '📡 Data Eksternal', 'color' => '#7c3aed'],
                                 ];
                             @endphp
                             @foreach ($sectors as $key => $s)
@@ -44,17 +43,6 @@
                             @foreach ($kecamatans as $k)
                                 <option value="{{ $k['name'] }}">{{ $k['name'] }}</option>
                             @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[12px] font-bold text-gray-700 mb-1.5">Sumber Data</label>
-                        <select id="source-filter"
-                                class="w-full rounded-xl border border-gray-300 text-[13px] px-3 py-2 bg-white focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500">
-                            <option value="internal">Internal</option>
-                            <option value="ats">📡 ATS</option>
-                            <option value="dapo">📡 DAPO</option>
-                            <option value="sp2kp">📡 PIHPS BI</option>
-                            <option value="bps">📡 BPS</option>
                         </select>
                     </div>
                 </div>
@@ -92,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let activeSector = 'all';
     let activeKecamatan = '';
-    let activeSource = '';
     let map = null;
     const focus = new URLSearchParams(location.search).get('focus');
 
@@ -100,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pendidikan: '#10b981',
         ketertiban: '#2563eb',
         kesehatan: '#dc2626',
-        eksternal: '#7c3aed',
     };
 
     function focusTarget(markers) {
@@ -131,10 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return allMarkers.filter((m) => {
             const sectorOk = activeSector === 'all' || m.sector === activeSector;
             const kecOk = !activeKecamatan || m.kecamatan === activeKecamatan;
-            const sourceOk = activeSource === 'internal'
-                ? (m.sector !== 'eksternal')
-                : (!activeSource || m.category === `ext-${activeSource}`);
-            return sectorOk && kecOk && sourceOk;
+            return sectorOk && kecOk;
         });
     }
 
@@ -194,11 +177,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('kecamatan-filter').addEventListener('change', (e) => {
         activeKecamatan = e.target.value;
-        renderMap();
-    });
-
-    document.getElementById('source-filter').addEventListener('change', (e) => {
-        activeSource = e.target.value;
         renderMap();
     });
 

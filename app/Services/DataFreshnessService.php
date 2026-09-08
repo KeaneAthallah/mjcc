@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\CrawlRecord;
+use App\Models\ExternalData;
 use App\Models\HealthFacility;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
@@ -17,8 +17,8 @@ use Illuminate\Support\Str;
 
 /**
  * Menghitung waktu pembaruan data terakhir dari data nyata (updated_at setiap
- * tabel operasional + crawl records). Tidak ada nilai yang dikarang — status
- * kesegaran diturunkan langsung dari timestamp aktual.
+ * tabel operasional + data publik eksternal). Tidak ada nilai yang dikarang —
+ * status kesegaran diturunkan langsung dari timestamp aktual.
  */
 class DataFreshnessService
 {
@@ -33,7 +33,7 @@ class DataFreshnessService
         Market::class,
         Kecamatan::class,
         Kelurahan::class,
-        CrawlRecord::class,
+        ExternalData::class,
     ];
 
     /**

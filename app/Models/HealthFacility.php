@@ -35,11 +35,6 @@ class HealthFacility extends Model
         'status',
         'phone',
         'description',
-        'source_name',
-        'source_url',
-        'source_id',
-        'source_updated_at',
-        'last_crawled_at',
     ];
 
     protected function casts(): array
@@ -51,14 +46,7 @@ class HealthFacility extends Model
             'doctors' => 'integer',
             'nurses' => 'integer',
             'midwives' => 'integer',
-            'source_updated_at' => 'datetime',
-            'last_crawled_at' => 'datetime',
         ];
-    }
-
-    public function isCrawled(): bool
-    {
-        return $this->source_name !== null;
     }
 
     public function kecamatan(): BelongsTo

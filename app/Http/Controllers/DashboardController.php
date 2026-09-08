@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\CommandAlert;
+use App\Models\ExternalData;
 use App\Models\HealthFacility;
 use App\Models\Polsek;
+use App\Models\PublicDataSync;
 use App\Models\School;
 use App\Services\CommandAlertSyncService;
 use App\Services\CommandCenterStatusService;
@@ -92,12 +94,28 @@ class DashboardController extends Controller
         $status = $this->statusService->overall();
         $freshness = $this->freshness->snapshot();
 
+        $publicData = [
+            'records' => ExternalData::count(),
+            'datasets' => ExternalData::distinct()->count('dataset'),
+            'sectors' => [],
+        ];
+
+        foreach (config('public_data.sectors', []) as $key => $config) {
+            $publicData['sectors'][$key] = [
+                'label' => (string) $config['label'],
+                'records' => ExternalData::where('sector', $key)->count(),
+                'datasets' => ExternalData::where('sector', $key)->distinct()->count('dataset'),
+                'last_success_at' => PublicDataSync::where('sector', $key)->value('last_success_at'),
+            ];
+        }
+
         return view('dashboard.index', [
             'stats' => $stats,
             'openAlerts' => $openAlerts,
             'alertCounts' => $this->alertCounts(),
             'status' => $status,
             'freshness' => $freshness,
+            'publicData' => $publicData,
             'dashboardData' => $dashboardData,
             'topSekolah' => $this->dashboard->topSekolah(),
             'topPoskamling' => $this->dashboard->topPoskamling(),

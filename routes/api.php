@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\CrawlerController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthFacilityController;
 use App\Http\Controllers\Api\V1\KecamatanController;
@@ -89,15 +88,6 @@ Route::prefix('v1')->name('api.')->group(function () {
             ->parameters(['facilities' => 'health_facility']);
         Route::put('health/facilities/{id}/restore', [HealthFacilityController::class, 'restore']);
         Route::delete('health/facilities/{id}/force', [HealthFacilityController::class, 'forceDestroy']);
-
-        // Data Eksternal (Government Data Crawler)
-        Route::get('crawler', [CrawlerController::class, 'index']);
-        Route::get('crawler/sources/{slug}', [CrawlerController::class, 'show']);
-        Route::get('crawler/sources/{slug}/runs', [CrawlerController::class, 'runs']);
-        Route::get('crawler/runs', [CrawlerController::class, 'runs']);
-        Route::get('crawler/runs/{runId}', [CrawlerController::class, 'runShow']);
-        Route::get('crawler/records', [CrawlerController::class, 'records']);
-        Route::get('crawler/records/{recordId}', [CrawlerController::class, 'recordShow']);
 
         // Users (admin only via UserPolicy)
         Route::apiResource('users', UserController::class);

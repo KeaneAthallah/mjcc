@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\CrawlRecord;
+use App\Models\ExternalData;
 use App\Models\HealthFacility;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
@@ -11,7 +11,7 @@ use App\Models\Polsek;
 use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\Tipkamtikmas;
-use App\Support\TargetRegionService;
+use App\Services\PublicData\LocationResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -21,6 +21,21 @@ use Illuminate\Support\Facades\Cache;
  */
 class MapService
 {
+    /**
+     * External (Satu Data) sectors mapped onto the map's sector labels.
+     */
+    private const EXTERNAL_SECTOR_MAP = [
+        'pendidikan' => 'pendidikan',
+        'kesehatan' => 'kesehatan',
+        'keamanan' => 'ketertiban',
+    ];
+
+    private const EXTERNAL_CATEGORY_MAP = [
+        'pendidikan' => 'data-publik-pendidikan',
+        'kesehatan' => 'data-publik-kesehatan',
+        'keamanan' => 'data-publik-keamanan',
+    ];
+
     /**
      * All map-enabled records across all sectors, optionally filtered by
      * kecamatan. Results are cached briefly; pass `$force = true` (or the
@@ -201,82 +216,99 @@ class MapService
                 ]);
             });
 
-        // Data Eksternal (crawler: ATS / DAPO / PIHPS BI / BPS)
-        CrawlRecord::with('source')
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->get()
-            ->each(function (CrawlRecord $cr) use (&$markers) {
-                if (! $this->isTargetRegionRecord($cr)) {
-                    return;
-                }
+        // Data Publik (Satu Data Morowali): locations aggregated per sector.
+        $externalKecamatans = $this->pushExternalData($markers, $kecamatanId, app(LocationResolver::class));
 
-                $slug = $cr->source?->slug;
-                $detailRoute = match ($slug) {
-                    'ats' => 'crawler.ats.show',
-                    'dapo' => 'crawler.dapo.schools.show',
-                    'sp2kp' => 'crawler.sp2kp.markets.show',
-                    'bps' => 'crawler.bps.show',
-                    default => null,
-                };
+        $kecamatanNames = collect();
 
-                $markers->push([
-                    'name' => $cr->name ?? $cr->external_id,
-                    'id' => $cr->id,
-                    'slug' => 'crawl-'.($slug ?? 'external'),
-                    'sector' => 'eksternal',
-                    'category' => 'ext-'.($slug ?? 'external'),
-                    'latitude' => (float) $cr->latitude,
-                    'longitude' => (float) $cr->longitude,
-                    'kecamatan' => $cr->kecamatan_name ?? $cr->kabupaten_name,
-                    'lastSeen' => $cr->last_seen_at?->diffForHumans(),
-                    'detailUrl' => $detailRoute ? route($detailRoute, $cr) : null,
-                    'sourceUrl' => $cr->source_url,
-                    'details' => array_merge(
-                        ['Sumber' => strtoupper((string) ($slug ?? ''))],
-                        $this->extractableDetails($cr),
-                    ),
-                ]);
-            });
+        foreach (Kecamatan::orderBy('name')->get(['id', 'name']) as $kecamatan) {
+            $kecamatanNames->push(['id' => $kecamatan->id, 'name' => $kecamatan->name]);
+        }
+
+        foreach ($externalKecamatans as $external) {
+            $kecamatanNames->push($external);
+        }
+
+        $kecamatanNames = $kecamatanNames->unique('name')->values()->all();
 
         return [
             'markers' => $markers,
-            'kecamatans' => Kecamatan::orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn ($k) => ['id' => $k->id, 'name' => $k->name])
-                ->all(),
+            'kecamatans' => $kecamatanNames,
         ];
     }
 
-    private function isTargetRegionRecord(CrawlRecord $record): bool
-    {
-        $service = new TargetRegionService;
-
-        return $service->isTargetRegion($record->kabupaten_code)
-            || $service->isTargetRegionName($record->kabupaten_name);
-    }
-
     /**
-     * @return array<string, mixed>
+     * Aggregates scraped external datapoints into one marker per kecamatan per
+     * sector. Rejects unresolved locations (aggregate rows like "Jumlah").
+     *
+     * @param  Collection<int, array<string, mixed>>  $markers
+     * @return array<int, array{id: null, name: string}>
      */
-    private function extractableDetails(CrawlRecord $record): array
+    private function pushExternalData(Collection $markers, ?int $kecamatanId, LocationResolver $resolver): array
     {
-        $data = $record->data ?? [];
+        $kecamatanName = $kecamatanId !== null ? Kecamatan::whereKey($kecamatanId)->value('name') : null;
 
-        if (! is_array($data)) {
-            return [];
-        }
+        $rows = ExternalData::query()
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get(['sector', 'source_url', 'dataset', 'location', 'latitude', 'longitude', 'scraped_at']);
 
-        $pick = ['komoditas', 'harga', 'indicator', 'label', 'status', 'jenjang'];
+        $grouped = collect();
 
-        $details = [];
+        foreach ($rows as $row) {
+            $resolved = $resolver->resolve($row->location);
 
-        foreach ($pick as $key) {
-            if (isset($data[$key]) && is_scalar($data[$key])) {
-                $details[ucfirst($key)] = $data[$key];
+            if ($resolved === null) {
+                continue;
             }
+
+            if ($kecamatanName !== null && $resolved['name'] !== $kecamatanName) {
+                continue;
+            }
+
+            $grouped->push([
+                'sector' => $row->sector,
+                'name' => $resolved['name'],
+                'latitude' => (float) $row->latitude,
+                'longitude' => (float) $row->longitude,
+                'source_url' => $row->source_url,
+                'dataset' => $row->dataset,
+                'scraped_at' => $row->scraped_at,
+            ]);
         }
 
-        return $details;
+        $grouped
+            ->groupBy(fn ($row) => $row['sector'].'|'.$row['name'])
+            ->each(function (Collection $rows) use ($markers) {
+                $first = $rows->first();
+
+                $sector = (string) $first['sector'];
+
+                $markers->push([
+                    'name' => $first['name'],
+                    'id' => null,
+                    'slug' => 'external_data',
+                    'sector' => self::EXTERNAL_SECTOR_MAP[$sector] ?? $sector,
+                    'category' => self::EXTERNAL_CATEGORY_MAP[$sector] ?? 'data-publik-pendidikan',
+                    'latitude' => $first['latitude'],
+                    'longitude' => $first['longitude'],
+                    'kecamatan' => $first['name'],
+                    'details' => [
+                        'Dataset' => $rows->pluck('dataset')->unique()->count(),
+                        'Rekor' => $rows->count(),
+                    ],
+                    'sourceUrl' => $first['source_url'],
+                    'detailUrl' => route('public-data.show', $sector),
+                    'lastSeen' => $rows->pluck('scraped_at')->max()?->format('Y-m-d H:i'),
+                ]);
+            });
+
+        return $grouped
+            ->pluck('name')
+            ->filter(fn ($name) => $name !== 'Kabupaten Morowali')
+            ->unique()
+            ->map(fn ($name) => ['id' => null, 'name' => $name])
+            ->values()
+            ->all();
     }
 }

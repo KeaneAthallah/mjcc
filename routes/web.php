@@ -3,7 +3,6 @@
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CommandAlertController;
-use App\Http\Controllers\CrawlerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EducationDashboardController;
 use App\Http\Controllers\HealthDashboardController;
@@ -16,6 +15,7 @@ use App\Http\Controllers\MarketController;
 use App\Http\Controllers\PolsekController;
 use App\Http\Controllers\PoskamlingController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicDataController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SecurityDashboardController;
@@ -88,27 +88,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/maps', [MapController::class, 'index'])->name('maps.index');
     Route::get('/maps/data', [MapController::class, 'data'])->name('maps.data');
 
-    // Data Eksternal (Government Data Crawler)
-    Route::get('/crawler', [CrawlerController::class, 'index'])->name('crawler.dashboard');
-    Route::get('/crawler/records', [CrawlerController::class, 'records'])->name('crawler.records.index');
-    Route::get('/crawler/records/{record}', [CrawlerController::class, 'show'])->name('crawler.records.show');
-    Route::get('/crawler/sources/{source}', [CrawlerController::class, 'source'])->name('crawler.sources.show');
-    Route::post('/crawler/sources/{source}/run', [CrawlerController::class, 'runCrawl'])->name('crawler.sources.run');
-
-    // Data Terintegrasi (frontend pages per source)
-    Route::get('/crawler/ats', [CrawlerController::class, 'ats'])->name('crawler.ats');
-    Route::get('/crawler/ats/records/{record}', [CrawlerController::class, 'atsShow'])->name('crawler.ats.show');
-    Route::get('/crawler/dapo', [CrawlerController::class, 'dapo'])->name('crawler.dapo');
-    Route::get('/crawler/dapo/schools/{record}', [CrawlerController::class, 'dapoShow'])->name('crawler.dapo.schools.show');
-    Route::get('/crawler/sp2kp', [CrawlerController::class, 'sp2kp'])->name('crawler.sp2kp');
-    Route::get('/crawler/sp2kp/markets/{record}', [CrawlerController::class, 'sp2kpShow'])->name('crawler.sp2kp.markets.show');
-    Route::get('/crawler/bps', [CrawlerController::class, 'bps'])->name('crawler.bps');
-    Route::get('/crawler/bps/indikator/{record}', [CrawlerController::class, 'bpsShow'])->name('crawler.bps.show');
-    Route::get('/crawler/kesehatan', [CrawlerController::class, 'kesehatan'])->name('crawler.kesehatan');
-    Route::get('/crawler/kesehatan/fasilitas/{facility}', [CrawlerController::class, 'kesehatanShow'])->name('crawler.kesehatan.show');
-    Route::post('/crawler/kesehatan/run', [CrawlerController::class, 'runKesehatan'])->name('crawler.kesehatan.run');
-    Route::get('/crawler/runs', [CrawlerController::class, 'runs'])->name('crawler.runs');
-    Route::get('/crawler/runs/{run}', [CrawlerController::class, 'runShow'])->name('crawler.runs.show');
+    // Data Publik (Satu Data Morowali)
+    Route::get('/data-publik', [PublicDataController::class, 'index'])->name('public-data.index');
+    Route::get('/data-publik/{sector}', [PublicDataController::class, 'show'])
+        ->whereIn('sector', ['pendidikan', 'kesehatan', 'keamanan'])
+        ->name('public-data.show');
+    Route::get('/data-publik/{sector}/dataset/{dataset}', [PublicDataController::class, 'dataset'])
+        ->whereIn('sector', ['pendidikan', 'kesehatan', 'keamanan'])
+        ->name('public-data.dataset');
 
     // Data Master
     Route::get('master/kecamatans/trash', [KecamatanController::class, 'trash'])->name('master.kecamatans.trash');

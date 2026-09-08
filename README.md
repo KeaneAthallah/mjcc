@@ -27,13 +27,13 @@ Dibangun dengan **Laravel 13** (PHP 8.3+) dan dilengkapi **Sanctum** untuk auten
 - 🎓 **Dashboard Pendidikan** — statistik SD/SMP, jumlah siswa & guru, rasio guru, progress fasilitas.
 - 🛡️ **Dashboard Ketertiban** — polsek, tipkamtikmas, poskamling, pasar.
 - 🏥 **Dashboard Kesehatan** — puskesmas, pustu, rumah sakit, posyandu, tenaga kesehatan.
-- 🗺️ **Peta Gabungan** — visualisasi semua lokasi di peta interaktif, bisa disaring per sektor/kecamatan.
+- 🗺️ **Peta Gabungan** — visualisasi semua lokasi di peta interaktif (aset daerah + titik Data Publik), bisa disaring per sektor/kecamatan.
 - 🔔 **Notifikasi Real-time** — lonceng alert (Command Alerts) dan pemantauan SOS yang memperbarui diri lewat polling HTTP.
 - 🗂️ **Data Master** — kecamatan, kelurahan/desa, mata pelajaran, sekolah, polsek, tipkamtikmas, poskamling, pasar, fasilitas kesehatan.
 - 👤 **Manajemen Pengguna & Role** — `admin`, `operator`, `viewer` (authorization policy + Form Request defense-in-depth).
 - ✉️ **Registrasi Publik & Verifikasi Email** — pendaftaran mandiri lewat API (role selalu diset `viewer` oleh backend) dikonfirmasi dengan kode verifikasi 6 digit sekali pakai yang dikirim via email.
 - 📜 **Log Aktivitas (Audit Trail)** — setiap aksi tercatat dan password tidak pernah tersimpan di log.
-- 🌐 **Data Eksternal (Crawler)** — penghimpun data otomatis dari sumber pemerintah (DAPO, ATS, PIHPS/BI, BPS, Kemenkes) dengan endpoint API read-only (sumber, riwayat run, record) untuk semua role.
+- 📊 **Data Publik (Sumber Eksternal)** — penghimpun data statistik terbuka dari portal Satu Data Morowali (`data.morowalikab.go.id`) untuk sektor Pendidikan, Kesehatan, dan Keamanan, dengan tampilan khusus, sinkronisasi terjadwal, serta resolusi lokasi ke koordinat peta (geocoding).
 - 📱 **REST API `/api/v1`** — endpoint lengkap untuk aplikasi Android (Flutter) dengan envelope JSON konsisten.
 
 ---
@@ -90,7 +90,7 @@ app/
 │   └── Responses/ApiResponse.php   # Envelope JSON standar
 ├── Models/                   # Eloquent models
 ├── Policies/                 # Authorization policies
-├── Services/                 # Command center, dashboard, alert, map, crawler services
+├── Services/                 # Command center, dashboard, alert, map, public-data scraping services
 └── Support/Access.php        # Matriks role admin/operator/viewer
 
 routes/
@@ -144,7 +144,7 @@ Buka `http://localhost:8000` pada browser. Untuk pengembangan frontend secara ho
 php artisan test --compact   # atau: vendor/bin/pest
 ```
 
-Suite mencakup pengujian web (dashboard, command center, intelijen kecamatan, search, peta, SOS, CRUD, trash/restore, audit, profil, crawler) plus pengujian API (autentikasi, registrasi & verifikasi email, otorisasi per role, dashboard, peta, crawler).
+Suite mencakup pengujian web (dashboard, command center, intelijen kecamatan, search, peta, SOS, CRUD, trash/restore, audit, profil, data publik) plus pengujian API (autentikasi, registrasi & verifikasi email, otorisasi per role, dashboard, peta).
 
 ---
 
@@ -156,7 +156,6 @@ Aplikasi menyediakan API lengkap di prefix `/api/v1`:
 - **Dashboard:** `/api/v1/dashboard`, `/education`, `/security`, `/health`
 - **Peta:** `/api/v1/maps`
 - **CRUD:** schools, polseks, tipkamtikmas, poskamlings, markets, health facilities, kecamatans, kelurahans, subjects, users
-- **Crawler (read-only):** `/api/v1/crawler`, `/sources/{slug}`, `/sources/{slug}/runs`, `/runs`, `/runs/{runId}`, `/records`, `/records/{recordId}`
 - **Audit log (admin):** `/api/v1/audit`
 
 Setiap request selain `login`, `register`, `email/verify`, dan `email/verification/resend` membutuhkan header `Authorization: Bearer <token>` dan `Accept: application/json`.

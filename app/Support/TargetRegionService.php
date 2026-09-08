@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * Centralizes the two target regions that the crawler is allowed to persist:
+ * Centralizes the two target regions that persistent data sources may use:
  * Kabupaten Morowali (Kemendagri 72.06 / BPS 7206) and Kabupaten Morowali
  * Utara (Kemendagri 72.12 / BPS 7212), both in Sulawesi Tengah (72).
  *

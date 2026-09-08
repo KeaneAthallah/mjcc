@@ -87,98 +87,10 @@
                class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('maps.index') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
                 <span class="w-[22px] text-center text-base">🗺️</span>Peta Gabungan
             </a>
-
-            @can('viewAny', \App\Models\CrawlRecord::class)
-                <div class="px-5 py-2 mt-2 text-[10px] uppercase tracking-widest opacity-40 font-bold">Data Terintegrasi</div>
-
-                <a href="{{ route('crawler.dashboard') }}"
-                   class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.dashboard') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                    <span class="w-[22px] text-center text-base">▧</span>Overview Data
-                </a>
-
-                {{-- ATS --}}
-                <div x-data="sidebarGroup({{ request()->routeIs('crawler.ats*') ? 'true' : 'false' }})">
-                    <button @click="toggle()"
-                            class="w-full flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.ats*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                        <span class="w-[22px] text-center text-base">👥</span>ATS Kemendikdasmen
-                        <svg class="ml-auto w-4 h-4 opacity-60 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                    <div x-show="open" x-cloak class="bg-white/5">
-                        <x:crawler-subnav :links="[
-                            ['route' => 'crawler.ats', 'label' => 'Ringkasan'],
-                            ['route' => 'crawler.ats', 'label' => 'Data ATS'],
-                            ['route' => 'crawler.ats', 'label' => 'Per Kecamatan'],
-                            ['route' => 'maps.index', 'label' => 'Peta'],
-                        ]"/>
-                    </div>
-                </div>
-
-                {{-- DAPO --}}
-                <div x-data="sidebarGroup({{ request()->routeIs('crawler.dapo*') ? 'true' : 'false' }})">
-                    <button @click="toggle()"
-                            class="w-full flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.dapo*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                        <span class="w-[22px] text-center text-base">🏫</span>DAPO Kemendikdasmen
-                        <svg class="ml-auto w-4 h-4 opacity-60 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                    <div x-show="open" x-cloak class="bg-white/5">
-                        <x:crawler-subnav :links="[
-                            ['route' => 'crawler.dapo', 'label' => 'Sekolah'],
-                            ['route' => 'maps.index', 'label' => 'Peta'],
-                        ]"/>
-                    </div>
-                </div>
-
-                {{-- SP2KP --}}
-                <div x-data="sidebarGroup({{ request()->routeIs('crawler.sp2kp*') ? 'true' : 'false' }})">
-                    <button @click="toggle()"
-                            class="w-full flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.sp2kp*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                        <span class="w-[22px] text-center text-base">🏪</span>PIHPS BI
-                        <svg class="ml-auto w-4 h-4 opacity-60 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                    <div x-show="open" x-cloak class="bg-white/5">
-                        <x:crawler-subnav :links="[
-                            ['route' => 'crawler.sp2kp', 'label' => 'Harga'],
-                            ['route' => 'crawler.sp2kp', 'label' => 'Komoditas'],
-                            ['route' => 'maps.index', 'label' => 'Peta'],
-                        ]"/>
-                    </div>
-                </div>
-
-                {{-- BPS --}}
-                <div x-data="sidebarGroup({{ request()->routeIs('crawler.bps*') ? 'true' : 'false' }})">
-                    <button @click="toggle()"
-                            class="w-full flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.bps*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                        <span class="w-[22px] text-center text-base">📊</span>BPS
-                        <svg class="ml-auto w-4 h-4 opacity-60 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                    <div x-show="open" x-cloak class="bg-white/5">
-                        <x:crawler-subnav :links="[
-                            ['route' => 'crawler.bps', 'label' => 'Indikator'],
-                            ['route' => 'crawler.bps', 'label' => 'Statistik Wilayah'],
-                        ]"/>
-                    </div>
-                </div>
-
-                {{-- Kesehatan --}}
-                <div x-data="sidebarGroup({{ request()->routeIs('crawler.kesehatan*') ? 'true' : 'false' }})">
-                    <button @click="toggle()"
-                            class="w-full flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.kesehatan*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                        <span class="w-[22px] text-center text-base">🏥</span>Fasyankes Kemenkes
-                        <svg class="ml-auto w-4 h-4 opacity-60 transition-transform" :class="open ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                    </button>
-                    <div x-show="open" x-cloak class="bg-white/5">
-                        <x:crawler-subnav :links="[
-                            ['route' => 'crawler.kesehatan', 'label' => 'Ringkasan'],
-                            ['route' => 'crawler.kesehatan', 'label' => 'Data Fasyankes'],
-                        ]"/>
-                    </div>
-                </div>
-
-                <a href="{{ route('crawler.runs') }}"
-                   class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('crawler.runs*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                    <span class="w-[22px] text-center text-base">🕘</span>Riwayat Sinkronisasi
-                </a>
-            @endcan
+            <a href="{{ route('public-data.index') }}"
+               class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
+                <span class="w-[22px] text-center text-base">📊</span>Data Publik
+            </a>
 
             {{-- Data Master (admin + operator) --}}
             @can('viewAny', \App\Models\School::class)

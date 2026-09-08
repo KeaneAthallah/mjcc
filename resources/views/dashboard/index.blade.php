@@ -118,6 +118,37 @@
         <x-metric-comparison label="Pasar" value="{{ number_format($stats['total_pasar']) }}" icon="🏪" color="violet"/>
     </x-kpi-grid>
 
+    {{-- Data Publik (Satu Data Morowali) --}}
+    <x-dashboard-section title="Data Publik" icon="📊"
+                         subtitle="Statistik terbuka dihimpun otomatis dari portal Satu Data Morowali"
+                         :pad="false">
+        <x-slot:actions>
+            <a href="{{ route('public-data.index') }}"
+               class="text-[12px] font-bold text-violet-700 hover:text-violet-900 hover:underline">
+                Lihat Data Publik →
+            </a>
+        </x-slot:actions>
+        <div class="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+            @foreach ($publicData['sectors'] as $key => $sector)
+                <a href="{{ route('public-data.show', $key) }}" class="p-5 transition hover:bg-violet-50/40 group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[12.5px] font-bold text-gray-700 group-hover:text-violet-700">{{ $sector['label'] }}</span>
+                        <span class="text-[14px]">{{ match($key) { 'pendidikan' => '🎓', 'kesehatan' => '🩺', default => '🛡️' } }}</span>
+                    </div>
+                    <div class="text-2xl font-extrabold text-gray-900">{{ number_format($sector['records']) }}</div>
+                    <div class="mt-1 text-[11px] text-gray-500">
+                        {{ number_format($sector['datasets']) }} dataset ·
+                        @if ($sector['last_success_at'])
+                            diperbarui {{ \Illuminate\Support\Carbon::parse($sector['last_success_at'])->translatedFormat('d M Y') }}
+                        @else
+                            belum pernah disinkronkan
+                        @endif
+                    </div>
+                </a>
+            @endforeach
+        </div>
+    </x-dashboard-section>
+
     {{-- Perlu Perhatian --}}
     <x-dashboard-section title="Perlu Perhatian" icon="⚠️"
                          subtitle="Masalah terdeteksi dari data nyata — urut sesuai tingkat keparahan"
