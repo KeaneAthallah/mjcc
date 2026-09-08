@@ -4,6 +4,7 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CommandAlertController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\EducationDashboardController;
 use App\Http\Controllers\HealthDashboardController;
 use App\Http\Controllers\HealthFacilityController;
@@ -96,6 +97,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/data-publik/{sector}/dataset/{dataset}', [PublicDataController::class, 'dataset'])
         ->whereIn('sector', ['pendidikan', 'kesehatan', 'keamanan'])
         ->name('public-data.dataset');
+
+    // Sinkronisasi Data Publik → Data Master (admin + operator via policy)
+    Route::get('/sinkronisasi', [DataImportController::class, 'index'])->name('data-import.index');
+    Route::post('/sinkronisasi/run', [DataImportController::class, 'run'])->name('data-import.run');
 
     // Data Master
     Route::get('master/kecamatans/trash', [KecamatanController::class, 'trash'])->name('master.kecamatans.trash');

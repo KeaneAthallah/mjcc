@@ -9,10 +9,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 if (config('public_data.enabled')) {
-    Schedule::command('public-data:scrape')
+    Schedule::command('data:sync')
         ->dailyAt(config('public_data.schedule', '03:00'))
         ->withoutOverlapping()
         ->onOneServer()
         ->runInBackground()
-        ->name('public-data:scrape');
+        ->name('data:sync');
 }

@@ -131,6 +131,10 @@
                    class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('health.facilities.*') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
                     <span class="w-[22px] text-center text-base">🏥</span>Fasilitas Kesehatan
                 </a>
+                <a href="{{ route('data-import.index') }}"
+                   class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('data-import.*') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
+                    <span class="w-[22px] text-center text-base">⇄</span>Sinkronisasi Data
+                </a>
             @endcan
 
             {{-- System (admin only) --}}
