@@ -10,7 +10,7 @@
 Sebuah dashboard pemantauan (command center) untuk Kabupaten Morowali yang
 menggabungkan data 3 sektor ke dalam satu halaman kendali:
 
-  - PENDIDIKAN  (Sekolah SD/SMP, guru, siswa, sarana)
+  - PENDIDIKAN  (Sekolah SD/SMP/SMA/SMK/MI/MTS/MA, guru, siswa, sarana)
   - KETERTIBAN  (Polsek, Tipkamtikmas, Poskamling, Pasar, Kelurahan/Desa)
   - KESEHATAN   (Puskesmas, Pustu, Rumah Sakit, Posyandu, dokter/perawat/bidan)
 
@@ -96,8 +96,9 @@ Model utama dan relasinya (semua memakai SoftDeletes kecuali User/Subject):
                  Market, HealthFacility
   Kelurahan       : belongsTo Kecamatan; population, status
   School          : belongsTo Kecamatan + Kelurahan; belongsToMany Subject
-      (pivot school_subject); SD/SMP, npsn, lat/long, kondisi, jumlah
-      siswa (male/female), guru, kelas, kapasitas, persentase sarana
+      (pivot school_subject); school_type SD/SMP/SMA/SMK/MI/MTS/MA
+      (School::SCHOOL_TYPES), npsn, lat/long, kondisi, jumlah siswa
+      (male/female), guru, kelas, kapasitas, persentase sarana
       (perpustakaan, lab IPA, lab komputer, ruang guru, toilet, tempat ibadah)
   Subject         : nama mata pelajaran
   Polsek          : name, personnel_count, poskamling_count, lat/long, status

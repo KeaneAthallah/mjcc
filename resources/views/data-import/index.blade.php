@@ -38,10 +38,10 @@
 
     {{-- Ringkasan --}}
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <x-stat-card label="Total Run Tercatat" :value="number_format($logs->total())" icon="🗃️" color="emerald"/>
+        <x-stat-card label="Total Run Tercatat" :value="number_format($totals->runs)" icon="🗃️" color="emerald"/>
         <x-stat-card label="Sinkronisasi Terakhir" value="{{ $sectors['pendidikan']['latest']?->finished_at?->translatedFormat('d M Y H:i') ?? 'Belum pernah' }}" icon="🔄" color="amber"/>
-        <x-stat-card label="Entitas Diimpor" :value="number_format($logs->getCollection()->sum('entities_created'))" icon="🏫" color="blue"/>
-        <x-stat-card label="Kecamatan Diisi" :value="number_format($logs->getCollection()->sum('kecamatan_created'))" icon="🗂️" color="violet"/>
+        <x-stat-card label="Entitas Diimpor" :value="number_format($totals->entities)" icon="🏫" color="blue"/>
+        <x-stat-card label="Kecamatan Diisi" :value="number_format($totals->kecamatan)" icon="🗂️" color="violet"/>
     </div>
 
     {{-- Sektor --}}

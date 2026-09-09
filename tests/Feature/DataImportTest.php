@@ -276,3 +276,60 @@ it('lets operators open the sync page and trigger an import', function () {
     expect(DataImportLog::count())->toBe(3)
         ->and(School::where('name', 'SDN 1 Bahodopi')->exists())->toBeTrue();
 });
+
+it('hides the sinkronisasi link from viewers in the sidebar', function () {
+    $viewer = User::factory()->viewer()->create();
+
+    $this->actingAs($viewer)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Sinkronisasi Data');
+});
+
+it('shows the sinkronisasi link to operators in the sidebar', function () {
+    $this->actingAs(User::factory()->operator()->create())
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Sinkronisasi Data')
+        ->assertSee('Sinkronkan Sekarang');
+});
+
+it('renders the Data Publik card on the beranda without the sync action for viewers', function () {
+    entityExternalData('pendidikan', 'Jumlah Siswa', ['NAMA SEKOLAH', 'JUMLAH SISWA'], ['SDN 1 Bahodopi', '320'], 'SDN 1 Bahodopi', 2024, 'JUMLAH SISWA', 320);
+    entityExternalData('kesehatan', 'Jumlah Puskesmas', ['KECAMATAN', 'JUMLAH'], ['Bahodopi', '3'], 'Bahodopi', 2024, 'JUMLAH SARANA KESEHATAN', 3);
+
+    $this->actingAs(User::factory()->viewer()->create())
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Data Publik')
+        ->assertSee('Total Rekaman')
+        ->assertSee('Jadwal Sinkron')
+        ->assertSee('Pendidikan')
+        ->assertSee('Kesehatan')
+        ->assertSee('Keamanan')
+        ->assertDontSee('Sinkronkan Sekarang');
+});
+
+it('summarises totals across all history rows, not just the current page', function () {
+    DataImportLog::insert(
+        collect(range(1, 16))->map(fn (int $i): array => [
+            'sector' => 'pendidikan',
+            'status' => DataImportLog::STATUS_SUCCESS,
+            'entities_created' => 1,
+            'kecamatan_created' => 2,
+            'datasets_scanned' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->all()
+    );
+
+    $response = $this->actingAs(User::factory()->admin()->create())
+        ->get(route('data-import.index'))
+        ->assertOk();
+
+    $totals = $response->viewData('totals');
+
+    expect($totals->runs)->toBe(16)
+        ->and($totals->entities)->toBe(16)
+        ->and($totals->kecamatan)->toBe(32);
+});

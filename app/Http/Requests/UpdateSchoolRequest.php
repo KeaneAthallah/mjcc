@@ -25,7 +25,7 @@ class UpdateSchoolRequest extends FormRequest
             'kecamatan_id' => ['required', 'exists:kecamatans,id'],
             'kelurahan_id' => ['nullable', 'exists:kelurahans,id'],
             'name' => ['required', 'string', 'max:255', Rule::unique('schools', 'name')->ignore($school)],
-            'school_type' => ['required', 'in:'.School::TYPE_SD.','.School::TYPE_SMP],
+            'school_type' => ['required', 'in:'.implode(',', School::SCHOOL_TYPES)],
             'npsn' => ['nullable', 'string', 'max:20', Rule::unique('schools', 'npsn')->ignore($school)],
             'address' => ['nullable', 'string', 'max:255'],
             'latitude' => $c['latitude'],

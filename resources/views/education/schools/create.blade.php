@@ -31,8 +31,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-[12px] font-bold text-gray-700 mb-1.5">Jenjang <span class="text-red-500">*</span></label>
-                        <div class="grid grid-cols-2 gap-2">
-                            @foreach (['SD', 'SMP'] as $t)
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            @foreach (\App\Models\School::SCHOOL_TYPES as $t)
                                 <label class="flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[13px] font-bold cursor-pointer transition
                                     {{ old('school_type') === $t ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-300 text-gray-600 hover:border-emerald-300' }}">
                                     <input type="radio" name="school_type" value="{{ $t }}" @checked(old('school_type') === $t) class="accent-emerald-600">
@@ -49,7 +49,7 @@
             </div>
         </x-card>
 
-        <x-card title="Data Siswa &amp; Guru" icon="🎓">
+        <x-card title="Data Siswa & Guru" icon="🎓">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <x-input label="Siswa Laki-laki" name="students_male" type="number" min="0" required :error="$errors->first('students_male')" />
                 <x-input label="Siswa Perempuan" name="students_female" type="number" min="0" required :error="$errors->first('students_female')" />
@@ -85,7 +85,7 @@
             </div>
         </x-card>
 
-        <x-card title="Mata Pelajaran &amp; Status" icon="📚">
+        <x-card title="Mata Pelajaran & Status" icon="📚">
             <div class="space-y-4">
                 <div>
                     <label class="block text-[12px] font-bold text-gray-700 mb-1.5">Mata Pelajaran</label>

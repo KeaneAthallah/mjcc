@@ -17,6 +17,26 @@ class School extends Model
 
     public const TYPE_SMP = 'SMP';
 
+    public const TYPE_SMA = 'SMA';
+
+    public const TYPE_SMK = 'SMK';
+
+    public const TYPE_MI = 'MI';
+
+    public const TYPE_MTS = 'MTS';
+
+    public const TYPE_MA = 'MA';
+
+    public const SCHOOL_TYPES = [
+        self::TYPE_SD,
+        self::TYPE_SMP,
+        self::TYPE_SMA,
+        self::TYPE_SMK,
+        self::TYPE_MI,
+        self::TYPE_MTS,
+        self::TYPE_MA,
+    ];
+
     protected $fillable = [
         'kecamatan_id',
         'kelurahan_id',

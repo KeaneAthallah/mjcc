@@ -23,8 +23,9 @@
         <select name="type"
                 class="rounded-xl border border-gray-300 text-[12px] px-3 py-2.5 bg-white focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500">
             <option value="">Semua Jenjang</option>
-            <option value="SD" @selected(request('type') === 'SD')>SD</option>
-            <option value="SMP" @selected(request('type') === 'SMP')>SMP</option>
+            @foreach (\App\Models\School::SCHOOL_TYPES as $t)
+                <option value="{{ $t }}" @selected(request('type') === $t)>{{ $t }}</option>
+            @endforeach
         </select>
         <select name="status"
                 class="rounded-xl border border-gray-300 text-[12px] px-3 py-2.5 bg-white focus:ring-2 focus:ring-emerald-200 focus:border-emerald-500">

@@ -25,7 +25,7 @@
             </p>
             <p class="text-gray-500">
                 Keterbatasan yang jujur: portal sejauh ini belum menerbitkan dataset keamanan dari lembaga kepolisian.
-                Sektor Keamanan menghimpun yang tersedia (Kesbangpol &amp; Penanggulangan Bencana) dan terus memantau
+                Sektor Keamanan menghimpun yang tersedia (Kesbangpol & Penanggulangan Bencana) dan terus memantau
                 setiap sinkronisasi untuk dataset baru.
             </p>
         </div>

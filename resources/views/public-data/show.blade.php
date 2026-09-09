@@ -52,7 +52,7 @@
 
     {{-- Filter --}}
     @if ($summary['records'] > 0)
-        <x-card title="Filter &amp; Pencarian" subtitle="Saring dataset menurut tahun, wilayah, atau indikator" icon="🔍">
+        <x-card title="Filter & Pencarian" subtitle="Saring dataset menurut tahun, wilayah, atau indikator" icon="🔍">
             <form method="GET" action="{{ route('public-data.show', $sector) }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <select name="dataset"
                         class="rounded-xl border border-gray-300 text-[12px] px-3 py-2.5 bg-white focus:ring-2 focus:ring-violet-200 focus:border-violet-500">

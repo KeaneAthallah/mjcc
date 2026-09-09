@@ -31,9 +31,14 @@ class DataImportController extends Controller
 
         $logs = DataImportLog::query()->latest('id')->paginate(15)->withQueryString();
 
+        $totals = DataImportLog::query()
+            ->selectRaw('COUNT(*) as runs, COALESCE(SUM(entities_created), 0) as entities, COALESCE(SUM(kecamatan_created), 0) as kecamatan')
+            ->first();
+
         return view('data-import.index', [
             'sectors' => $sectors,
             'logs' => $logs,
+            'totals' => $totals,
         ]);
     }
 

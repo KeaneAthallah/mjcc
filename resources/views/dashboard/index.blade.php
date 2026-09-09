@@ -119,30 +119,65 @@
     </x-kpi-grid>
 
     {{-- Data Publik (Satu Data Morowali) --}}
+    @php
+        $publicThemes = [
+            'pendidikan' => ['icon' => '🎓', 'chip' => 'bg-emerald-100 text-emerald-600', 'hover' => 'hover:border-emerald-200', 'link' => 'group-hover:text-emerald-700'],
+            'kesehatan' => ['icon' => '🏥', 'chip' => 'bg-red-100 text-red-600', 'hover' => 'hover:border-red-200', 'link' => 'group-hover:text-red-700'],
+            'keamanan' => ['icon' => '🛡️', 'chip' => 'bg-blue-100 text-blue-600', 'hover' => 'hover:border-blue-200', 'link' => 'group-hover:text-blue-700'],
+        ];
+    @endphp
     <x-dashboard-section title="Data Publik" icon="📊"
                          subtitle="Statistik terbuka dihimpun otomatis dari portal Satu Data Morowali"
                          :pad="false">
         <x-slot:actions>
-            <a href="{{ route('public-data.index') }}"
-               class="text-[12px] font-bold text-violet-700 hover:text-violet-900 hover:underline">
-                Lihat Data Publik →
-            </a>
+            <div class="flex items-center gap-3">
+                @can('create', \App\Models\School::class)
+                    <form method="POST" action="{{ route('data-import.run') }}">
+                        @csrf
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 text-[12px] font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl px-3 py-2 transition">
+                            ⇄ Sinkronkan Sekarang
+                        </button>
+                    </form>
+                @endcan
+                <a href="{{ route('public-data.index') }}"
+                   class="text-[12px] font-bold text-violet-700 hover:text-violet-900 hover:underline">
+                    Lihat Data Publik →
+                </a>
+            </div>
         </x-slot:actions>
-        <div class="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4">
+            <x-stat-card label="Total Rekaman" :value="number_format($publicData['records'])" icon="🗃️" color="emerald"/>
+            <x-stat-card label="Total Dataset" :value="number_format($publicData['datasets'])" icon="📚" color="violet"/>
+            <x-stat-card label="Jadwal Sinkron" value="{{ config('public_data.schedule', '03:00') }} WITA" icon="⏰" color="amber"/>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 pb-4">
             @foreach ($publicData['sectors'] as $key => $sector)
-                <a href="{{ route('public-data.show', $key) }}" class="p-5 transition hover:bg-violet-50/40 group">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-[12.5px] font-bold text-gray-700 group-hover:text-violet-700">{{ $sector['label'] }}</span>
-                        <span class="text-[14px]">{{ match($key) { 'pendidikan' => '🎓', 'kesehatan' => '🩺', default => '🛡️' } }}</span>
+                @php
+                    $theme = $publicThemes[$key] ?? $publicThemes['pendidikan'];
+                @endphp
+                <a href="{{ route('public-data.show', $key) }}"
+                   class="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md {{ $theme['hover'] }}">
+                    <div class="flex items-center justify-between">
+                        <span class="w-10 h-10 rounded-xl {{ $theme['chip'] }} flex items-center justify-center text-lg">{{ $theme['icon'] }}</span>
+                        <x-badge :color="$sector['last_success_at'] ? 'green' : 'gray'">
+                            {{ $sector['last_success_at'] ? 'Tersinkron' : 'Belum pernah' }}
+                        </x-badge>
                     </div>
-                    <div class="text-2xl font-extrabold text-gray-900">{{ number_format($sector['records']) }}</div>
-                    <div class="mt-1 text-[11px] text-gray-500">
-                        {{ number_format($sector['datasets']) }} dataset ·
-                        @if ($sector['last_success_at'])
-                            diperbarui {{ \Illuminate\Support\Carbon::parse($sector['last_success_at'])->translatedFormat('d M Y') }}
-                        @else
-                            belum pernah disinkronkan
-                        @endif
+                    <div class="mt-3 text-[12.5px] font-bold text-gray-700 {{ $theme['link'] }}">{{ $sector['label'] }}</div>
+                    <div class="mt-0.5 text-[26px] font-extrabold text-gray-900 leading-none tabular-nums">{{ number_format($sector['records']) }}</div>
+                    <div class="mt-2 flex items-center justify-between text-[11px] text-gray-400">
+                        <span>{{ number_format($sector['datasets']) }} dataset</span>
+                        <span class="flex items-center gap-1">
+                            @if ($sector['last_success_at'])
+                                {{ \Illuminate\Support\Carbon::parse($sector['last_success_at'])->translatedFormat('d M Y') }}
+                            @else
+                                belum pernah
+                            @endif
+                            <span class="transform transition group-hover:translate-x-0.5">→</span>
+                        </span>
                     </div>
                 </a>
             @endforeach
