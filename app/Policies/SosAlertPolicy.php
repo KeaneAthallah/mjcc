@@ -53,4 +53,33 @@ class SosAlertPolicy
 
         return $user->canManageData() || $sos->ownedBy($user);
     }
+
+    /**
+     * Responder type must match the SOS category, or user must be admin.
+     */
+    public function accept(User $user, SosAlert $sos): bool
+    {
+        if (! $sos->isOpen()) {
+            return false;
+        }
+
+        return $user->responderForCategory($sos->category);
+    }
+
+    /**
+     * Only the accepted responder can update their location.
+     */
+    public function updateLocation(User $user, SosAlert $sos): bool
+    {
+        return $sos->accepted_by === $user->id;
+    }
+
+    /**
+     * The owner of the alert (and operators/admins) may watch the live
+     * responder locations so the requester can see the petugas on a map.
+     */
+    public function viewResponderLocations(User $user, SosAlert $sos): bool
+    {
+        return $user->canManageData() || $sos->ownedBy($user);
+    }
 }

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\KecamatanController;
 use App\Http\Controllers\Api\V1\KelurahanController;
 use App\Http\Controllers\Api\V1\MapController;
 use App\Http\Controllers\Api\V1\MarketController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PolsekController;
 use App\Http\Controllers\Api\V1\PoskamlingController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -91,6 +92,7 @@ Route::prefix('v1')->name('api.')->group(function () {
 
         // Users (admin only via UserPolicy)
         Route::apiResource('users', UserController::class);
+        Route::post('users/{user}/verify-email', [UserController::class, 'verifyEmail']);
 
         // Audit log (admin only via ActivityLogPolicy)
         Route::get('audit', [AuditController::class, 'index']);
@@ -98,12 +100,22 @@ Route::prefix('v1')->name('api.')->group(function () {
         // SOS / Emergency (any authenticated user may create; management via policy)
         Route::get('sos/active-count', [SosController::class, 'activeCount']);
         Route::get('sos/my-open', [SosController::class, 'myOpen']);
+        Route::get('sos/active-incidents', [SosController::class, 'activeIncidents']);
         Route::post('sos', [SosController::class, 'store'])->middleware('throttle:sos');
         Route::get('sos', [SosController::class, 'index']);
+        Route::post('sos/{sos}/accept', [SosController::class, 'accept']);
+        Route::post('sos/{sos}/on-the-way', [SosController::class, 'onTheWay']);
+        Route::post('sos/{sos}/arrived', [SosController::class, 'arrived']);
+        Route::post('sos/{sos}/location', [SosController::class, 'updateLocation']);
+        Route::get('sos/{sos}/responder-locations', [SosController::class, 'responderLocations']);
         Route::get('sos/{sos}', [SosController::class, 'show']);
         Route::post('sos/{sos}/acknowledge', [SosController::class, 'acknowledge']);
         Route::post('sos/{sos}/respond', [SosController::class, 'respond']);
         Route::post('sos/{sos}/resolve', [SosController::class, 'resolve']);
         Route::post('sos/{sos}/cancel', [SosController::class, 'cancel']);
+
+        // Notifications
+        Route::get('notifications', [NotificationController::class, 'index']);
+        Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);
     });
 });

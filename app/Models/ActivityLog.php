@@ -40,6 +40,12 @@ class ActivityLog extends Model
 
     public const ACTION_SOS_CANCELLED = 'sos_cancelled';
 
+    public const ACTION_SOS_ACCEPTED = 'sos_accepted';
+
+    public const ACTION_SOS_ON_THE_WAY = 'sos_on_the_way';
+
+    public const ACTION_SOS_ARRIVED = 'sos_arrived';
+
     public const ACTION_ALERT_STATUS = 'alert_status';
 
     protected $fillable = [
@@ -86,6 +92,9 @@ class ActivityLog extends Model
             self::ACTION_SOS_RESPONDING => 'Menuju lokasi SOS',
             self::ACTION_SOS_RESOLVED => 'Menyelesaikan SOS darurat',
             self::ACTION_SOS_CANCELLED => 'Membatalkan SOS darurat',
+            self::ACTION_SOS_ACCEPTED => 'Menerima SOS darurat',
+            self::ACTION_SOS_ON_THE_WAY => 'Menuju lokasi SOS',
+            self::ACTION_SOS_ARRIVED => 'Tiba di lokasi SOS',
             self::ACTION_ALERT_STATUS => 'Memperbarui status alert',
             default => $this->action,
         };

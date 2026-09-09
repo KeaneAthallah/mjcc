@@ -55,6 +55,27 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function medicalResponder(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'responder_type' => User::RESPONDER_MEDICAL,
+        ]);
+    }
+
+    public function fireResponder(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'responder_type' => User::RESPONDER_FIRE,
+        ]);
+    }
+
+    public function policeResponder(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'responder_type' => User::RESPONDER_POLICE,
+        ]);
+    }
+
     /**
      * Indicate that the model's email address should be unverified.
      */

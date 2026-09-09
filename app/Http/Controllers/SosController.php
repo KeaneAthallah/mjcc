@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Api\AcknowledgeSosAlertRequest;
 use App\Http\Requests\Api\ResolveSosAlertRequest;
 use App\Http\Requests\Api\RespondSosAlertRequest;
+use App\Models\ResponderLocation;
 use App\Models\SosAlert;
 use App\Models\User;
 use App\Services\SosService;
@@ -76,6 +77,7 @@ class SosController extends Controller
         return response()->json([
             'id' => $sos->id,
             'status' => $sos->status,
+            'responders' => $this->responderMarkers($sos),
             'statusCardHtml' => view('sos.partials._status_card', ['sos' => $sos])->render(),
             'timelineHtml' => view('sos.partials._timeline', ['sos' => $sos])->render(),
             'actionsHtml' => view('sos.partials._actions', ['sos' => $sos])->render(),
@@ -126,6 +128,7 @@ class SosController extends Controller
                     ],
                 ];
             })
+            ->concat($this->responderMarkersForOpenAlerts())
             ->values();
 
         return ['alerts' => $alerts, 'markers' => $markers];
@@ -139,6 +142,7 @@ class SosController extends Controller
 
         return view('sos.show', [
             'sos' => $sos,
+            'responders' => $this->responderMarkers($sos),
             'marker' => [
                 'name' => ($sos->user?->name ?? 'Pengguna').' · SOS #'.$sos->id,
                 'category' => 'sos',
@@ -185,6 +189,72 @@ class SosController extends Controller
         $this->service->cancel($sos, $request->user());
 
         return back()->with('success', 'SOS telah dibatalkan.');
+    }
+
+    /**
+     * Latest live location of each responder on an alert, shaped as map
+     * markers so the web map can place both the sender and the petugas.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function responderMarkers(SosAlert $sos): array
+    {
+        return $this->service
+            ->getLatestResponderLocations($sos)
+            ->map(fn (ResponderLocation $location): array => [
+                'id' => $location->id,
+                'name' => $location->user?->name ?? 'Petugas',
+                'category' => 'responder',
+                'latitude' => (float) $location->latitude,
+                'longitude' => (float) $location->longitude,
+                'lastSeen' => $location->created_at?->diffForHumans(),
+                'details' => [
+                    'Peran' => $location->user?->responder_type_label ?? 'Petugas',
+                    'Posisi' => $location->created_at?->format('H:i'),
+                ],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Latest petugas position for every open alert, merged into the command
+     * center map so operators see both sender and petugas markers live.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function responderMarkersForOpenAlerts(): array
+    {
+        $latestIds = ResponderLocation::query()
+            ->whereIn('sos_alert_id', SosAlert::query()->whereIn('status', SosAlert::openStatuses())->select('id'))
+            ->selectRaw('MAX(id) as id')
+            ->groupBy(['sos_alert_id', 'user_id'])
+            ->pluck('id');
+
+        if ($latestIds->isEmpty()) {
+            return [];
+        }
+
+        return ResponderLocation::query()
+            ->whereIn('id', $latestIds)
+            ->with('user:id,name,responder_type')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (ResponderLocation $location): array => [
+                'id' => $location->id,
+                'name' => $location->user?->name ?? 'Petugas',
+                'category' => 'responder',
+                'latitude' => (float) $location->latitude,
+                'longitude' => (float) $location->longitude,
+                'lastSeen' => $location->created_at?->diffForHumans(),
+                'detailUrl' => route('sos.show', $location->sos_alert_id),
+                'details' => [
+                    'Peran' => $location->user?->responder_type_label ?? 'Petugas',
+                    'Posisi' => $location->created_at?->format('H:i'),
+                ],
+            ])
+            ->values()
+            ->all();
     }
 
     /**

@@ -99,4 +99,24 @@ class UserController extends Controller
 
         return ApiResponse::success(null, 'Pengguna berhasil dihapus.');
     }
+
+    public function verifyEmail(Request $request, User $user): JsonResponse
+    {
+        $this->authorize('update', $user);
+
+        $verified = filter_var($request->input('verified', true), FILTER_VALIDATE_BOOL);
+
+        if ($user->hasVerifiedEmail() === $verified) {
+            $message = $verified ? 'Email sudah terverifikasi.' : 'Email sudah ditandai belum terverifikasi.';
+        } else {
+            if ($verified) {
+                $user->markEmailAsVerified();
+            } else {
+                $user->forceFill(['email_verified_at' => null])->save();
+            }
+            $message = $verified ? 'Email berhasil diverifikasi.' : 'Email berhasil ditandai belum terverifikasi.';
+        }
+
+        return ApiResponse::success($this->resourceFor($user), $message);
+    }
 }

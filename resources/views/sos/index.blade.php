@@ -40,7 +40,7 @@
             <span class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-lg">🗺️</span>
             <div>
                 <h3 class="font-extrabold text-gray-900 text-[14px]">Lokasi SOS Terbuka</h3>
-                <p class="text-[11px] text-gray-400">Marker merah menandakan permintaan yang membutuhkan penanganan</p>
+                <p class="text-[11px] text-gray-400">Marker merah 🆘 = permintaan · marker biru 🚓 = posisi petugas terbaru</p>
             </div>
         </div>
         <div id="sos-map" class="h-[340px]"></div>

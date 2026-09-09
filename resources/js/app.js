@@ -418,6 +418,19 @@ document.addEventListener('alpine:init', () => {
                 apply('sos-status-card', data.statusCardHtml);
                 apply('sos-timeline', data.timelineHtml);
                 apply('sos-actions', data.actionsHtml);
+
+                const M = window.Mjcc?.maps;
+                if (M && window.sosDetailMap && Array.isArray(data.responders)) {
+                    M.renderResponders(window.sosDetailMap, window.sosDetailSender, data.responders, {
+                        onRoute: ({ distanceKm, etaMin }) => {
+                            const info = document.getElementById('sos-route-info');
+                            if (info) {
+                                info.textContent = `🚓 Rute terdekat ${distanceKm} km · ±${etaMin} mnt`;
+                                info.classList.remove('hidden');
+                            }
+                        },
+                    });
+                }
             } catch (e) {
                 // transient network error: keep the current DOM
             }

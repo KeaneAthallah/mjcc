@@ -39,7 +39,17 @@
             </x-card>
 
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div id="sos-detail-map" class="h-[280px]"></div>
+                <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                    <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-lg">🚓</span>
+                    <div>
+                        <h3 class="font-extrabold text-gray-900 text-[14px]">Lokasi Sender &amp; Petugas</h3>
+                        <p class="text-[11px] text-gray-400">🆘 lokasi pelapor · 🚓 posisi petugas terbaru · garis biru = rute terdekat</p>
+                    </div>
+                </div>
+                <div class="relative">
+                    <div id="sos-detail-map" class="h-[280px]"></div>
+                    <div id="sos-route-info" class="hidden absolute top-2 right-2 z-[1000] rounded-lg bg-white/95 border border-blue-200 px-3 py-1.5 text-[11px] font-bold text-blue-800 shadow-sm"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -51,12 +61,35 @@
 document.addEventListener('DOMContentLoaded', () => {
     const M = window.Mjcc.maps;
     const marker = @json($marker);
-    M.createMap('sos-detail-map', [marker], {
+    const responders = @json($responders);
+    const map = M.createMap('sos-detail-map', [marker], {
         cluster: false,
         resize: true,
         center: [marker.latitude, marker.longitude],
         zoom: 15,
     });
+
+    window.sosDetailMap = map;
+    window.sosDetailSender = marker;
+    M.renderResponders(map, marker, responders, {
+        onRoute: ({ distanceKm, etaMin }) => {
+            const info = document.getElementById('sos-route-info');
+            if (info) {
+                info.textContent = `🚓 Rute terdekat ${distanceKm} km · ±${etaMin} mnt`;
+                info.classList.remove('hidden');
+            }
+        },
+    });
+
+    const respondersWithCoords = responders
+        .filter((r) => Number.isFinite(Number(r.latitude)) && Number.isFinite(Number(r.longitude)))
+        .map((r) => [Number(r.latitude), Number(r.longitude)]);
+    if (respondersWithCoords.length) {
+        map.fitBounds([[marker.latitude, marker.longitude], ...respondersWithCoords], {
+            padding: [40, 40],
+            maxZoom: 14,
+        });
+    }
 });
 </script>
 @endpush

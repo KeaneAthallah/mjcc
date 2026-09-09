@@ -90,4 +90,43 @@ class SosAlertFactory extends Factory
             'status' => SosAlert::STATUS_CANCELLED,
         ]);
     }
+
+    public function accepted(?User $responder = null): static
+    {
+        return $this->state(function (array $attributes) use ($responder) {
+            $responder ??= User::factory()->create(['responder_type' => 'medical']);
+
+            return [
+                'status' => SosAlert::STATUS_ACCEPTED,
+                'accepted_by' => $responder->id,
+                'accepted_at' => now(),
+            ];
+        });
+    }
+
+    public function onTheWay(): static
+    {
+        return $this->state(function (array $attributes) {
+            $responder = User::factory()->create(['responder_type' => 'medical']);
+
+            return [
+                'status' => SosAlert::STATUS_ON_THE_WAY,
+                'accepted_by' => $responder->id,
+                'accepted_at' => now()->subMinutes(5),
+            ];
+        });
+    }
+
+    public function arrived(): static
+    {
+        return $this->state(function (array $attributes) {
+            $responder = User::factory()->create(['responder_type' => 'medical']);
+
+            return [
+                'status' => SosAlert::STATUS_ARRIVED,
+                'accepted_by' => $responder->id,
+                'accepted_at' => now()->subMinutes(10),
+            ];
+        });
+    }
 }

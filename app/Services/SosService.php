@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Models\ActivityLog;
+use App\Models\ResponderLocation;
 use App\Models\SosAlert;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -12,7 +15,11 @@ use Illuminate\Validation\ValidationException;
  * Centralizes the SOS lifecycle:
  *
  *     active -> acknowledged -> responding -> resolved
+ *     active -> accepted -> on_the_way -> arrived -> resolved
  *     active -> cancelled
+ *     accepted -> cancelled
+ *     on_the_way -> cancelled
+ *     arrived -> resolved
  *
  * Also enforces the anti-spam rule (one open SOS per user) and writes the
  * audit trail for every security-relevant SOS action.
@@ -29,6 +36,7 @@ class SosService
             SosAlert::STATUS_ACKNOWLEDGED,
             SosAlert::STATUS_RESPONDING,
             SosAlert::STATUS_CANCELLED,
+            SosAlert::STATUS_ACCEPTED,
         ],
         SosAlert::STATUS_ACKNOWLEDGED => [
             SosAlert::STATUS_RESPONDING,
@@ -37,11 +45,28 @@ class SosService
         SosAlert::STATUS_RESPONDING => [
             SosAlert::STATUS_RESOLVED,
         ],
+        SosAlert::STATUS_ACCEPTED => [
+            SosAlert::STATUS_ON_THE_WAY,
+            SosAlert::STATUS_RESOLVED,
+            SosAlert::STATUS_CANCELLED,
+        ],
+        SosAlert::STATUS_ON_THE_WAY => [
+            SosAlert::STATUS_ARRIVED,
+            SosAlert::STATUS_RESOLVED,
+            SosAlert::STATUS_CANCELLED,
+        ],
+        SosAlert::STATUS_ARRIVED => [
+            SosAlert::STATUS_RESOLVED,
+            SosAlert::STATUS_CANCELLED,
+        ],
         SosAlert::STATUS_RESOLVED => [],
         SosAlert::STATUS_CANCELLED => [],
     ];
 
-    public function __construct(private readonly ActivityLogService $logs) {}
+    public function __construct(
+        private readonly ActivityLogService $logs,
+        private readonly NotificationService $notifications,
+    ) {}
 
     /**
      * Whether the alert may move to the given status.
@@ -95,6 +120,7 @@ class SosService
                 'longitude' => $data['longitude'],
                 'accuracy' => $data['accuracy'] ?? null,
                 'status' => SosAlert::STATUS_ACTIVE,
+                'category' => $data['category'] ?? SosAlert::CATEGORY_GENERAL,
                 'message' => $data['message'] ?? null,
             ]);
 
@@ -103,7 +129,11 @@ class SosService
             return $sos;
         });
 
-        return $sos->fresh(['user:id,name,email,role']);
+        $sos->load(['user:id,name,email,role']);
+
+        $this->notifications->notifyRelevantResponders($sos);
+
+        return $sos;
     }
 
     /**
@@ -155,12 +185,156 @@ class SosService
     }
 
     /**
+     * A responder accepts an active SOS. Validates responder_type matches category (or admin).
+     */
+    public function accept(SosAlert $sos, User $responder): SosAlert
+    {
+        if (! $responder->responderForCategory($sos->category)) {
+            throw ValidationException::withMessages([
+                'responder' => ['Tipe responder Anda tidak sesuai dengan kategori SOS ini.'],
+            ]);
+        }
+
+        $this->assertCanTransition($sos, SosAlert::STATUS_ACCEPTED);
+
+        return DB::transaction(function () use ($sos, $responder): SosAlert {
+            $fresh = SosAlert::where('id', $sos->id)->lockForUpdate()->first();
+
+            if ($fresh->accepted_by !== null) {
+                throw ValidationException::withMessages([
+                    'sos' => ['SOS ini sudah diterima oleh petugas lain.'],
+                ]);
+            }
+
+            $fresh->update([
+                'status' => SosAlert::STATUS_ACCEPTED,
+                'accepted_by' => $responder->id,
+                'accepted_at' => now(),
+            ]);
+
+            $this->log($fresh, ActivityLog::ACTION_SOS_ACCEPTED, $responder, [
+                'status' => $fresh->status,
+                'accepted_by' => $responder->id,
+            ]);
+
+            return $fresh->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+        });
+    }
+
+    /**
+     * Responder marks themselves as on the way: accepted -> on_the_way.
+     */
+    public function onTheWay(SosAlert $sos, User $responder): SosAlert
+    {
+        if ($sos->accepted_by !== $responder->id) {
+            throw ValidationException::withMessages([
+                'responder' => ['Hanya petugas yang menerima SOS yang dapat memperbarui status ini.'],
+            ]);
+        }
+
+        $this->assertCanTransition($sos, SosAlert::STATUS_ON_THE_WAY);
+
+        return DB::transaction(function () use ($sos, $responder): SosAlert {
+            $sos->update([
+                'status' => SosAlert::STATUS_ON_THE_WAY,
+            ]);
+
+            $this->log($sos, ActivityLog::ACTION_SOS_ON_THE_WAY, $responder, [
+                'status' => $sos->status,
+            ]);
+
+            return $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+        });
+    }
+
+    /**
+     * Responder marks themselves as arrived: on_the_way -> arrived.
+     */
+    public function arrived(SosAlert $sos, User $responder): SosAlert
+    {
+        if ($sos->accepted_by !== $responder->id) {
+            throw ValidationException::withMessages([
+                'responder' => ['Hanya petugas yang menerima SOS yang dapat memperbarui status ini.'],
+            ]);
+        }
+
+        $this->assertCanTransition($sos, SosAlert::STATUS_ARRIVED);
+
+        return DB::transaction(function () use ($sos, $responder): SosAlert {
+            $sos->update([
+                'status' => SosAlert::STATUS_ARRIVED,
+            ]);
+
+            $this->log($sos, ActivityLog::ACTION_SOS_ARRIVED, $responder, [
+                'status' => $sos->status,
+            ]);
+
+            return $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+        });
+    }
+
+    /**
+     * Update responder's live location for an SOS.
+     */
+    public function updateResponderLocation(int $sosId, User $responder, float $lat, float $lng): void
+    {
+        ResponderLocation::create([
+            'sos_alert_id' => $sosId,
+            'user_id' => $responder->id,
+            'latitude' => $lat,
+            'longitude' => $lng,
+        ]);
+    }
+
+    /**
+     * Latest recorded location per responder for an alert. Returns the newest
+     * `sos_responder_locations` row for each distinct responder, eager-loaded
+     * with the user identity so the requester can see who is coming.
+     *
+     * @return Collection<int, ResponderLocation>
+     */
+    public function getLatestResponderLocations(SosAlert $sos): Collection
+    {
+        $latestIds = ResponderLocation::query()
+            ->selectRaw('MAX(id) as id')
+            ->where('sos_alert_id', $sos->id)
+            ->groupBy('user_id')
+            ->pluck('id');
+
+        if ($latestIds->isEmpty()) {
+            return new Collection;
+        }
+
+        return ResponderLocation::query()
+            ->whereIn('id', $latestIds)
+            ->with('user:id,name,responder_type')
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * Get active incidents that match a responder's type.
+     */
+    public function getActiveIncidentsForResponder(User $responder): Collection
+    {
+        return SosAlert::query()
+            ->whereIn('status', SosAlert::isOpenStatuses())
+            ->where(function (Builder $q) use ($responder) {
+                if ($responder->isAdmin()) {
+                    return;
+                }
+                $q->where('category', $responder->responder_type);
+            })
+            ->with(['user:id,name,email,role', 'acceptedBy:id,name'])
+            ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'acknowledged' THEN 1 WHEN 'responding' THEN 2 WHEN 'accepted' THEN 3 WHEN 'on_the_way' THEN 4 WHEN 'arrived' THEN 5 ELSE 6 END")
+            ->latest('created_at')
+            ->get();
+    }
+
+    /**
      * Counts of open alerts for the notification badge.
      *
-     * - Operators/admins see every open alert.
-     * - Regular users see only their own open alerts.
-     *
-     * @return array{open: int, active: int, acknowledged: int, responding: int}
+     * @return array{open: int, active: int, acknowledged: int, responding: int, accepted: int, on_the_way: int, arrived: int}
      */
     public function counts(?User $user = null): array
     {
@@ -177,6 +351,9 @@ class SosService
             'active' => (clone $open)->where('status', SosAlert::STATUS_ACTIVE)->count(),
             'acknowledged' => (clone $open)->where('status', SosAlert::STATUS_ACKNOWLEDGED)->count(),
             'responding' => (clone $open)->where('status', SosAlert::STATUS_RESPONDING)->count(),
+            'accepted' => (clone $open)->where('status', SosAlert::STATUS_ACCEPTED)->count(),
+            'on_the_way' => (clone $open)->where('status', SosAlert::STATUS_ON_THE_WAY)->count(),
+            'arrived' => (clone $open)->where('status', SosAlert::STATUS_ARRIVED)->count(),
         ];
     }
 

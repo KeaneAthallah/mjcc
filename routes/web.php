@@ -118,6 +118,7 @@ Route::middleware('auth')->group(function () {
 
     // Users (admin only via policy)
     Route::resource('users', UserController::class)->names('users');
+    Route::post('/users/{user}/verify-email', [UserController::class, 'verifyEmail'])->name('users.verify-email');
 
     // Audit log (admin only via policy)
     Route::get('/audit', [ActivityLogController::class, 'index'])->name('audit.index');

@@ -17,6 +17,16 @@ menggabungkan data 3 sektor ke dalam satu halaman kendali:
 Data disimpan sepenuhnya di database (bukan hardcoded). Dashboard menampilkan
 statistik, grafik (Chart.js), dan peta interaktif (Leaflet + marker cluster).
 
+Selain dashboard, aplikasi ini menawarkan:
+  - SOS / DARURAT  : permintaan bantuan (kategori medical/fire/police) dengan
+      alur status (pending -> acknowledged -> on_the_way -> arrived ->
+      resolved), pelacakan posisi petugas, dan peta live peta-web
+      (marker sender + petugas + rute OSRM petugas->sender).
+  - NOTIFIKASI     : baris notifikasi per-user (disimpan MySQL), dikonsumsi
+      aplikasi Android lewat polling, dan daftar notifikasi di UI web/API.
+  - REST API `/api/v1`  : autentikasi Sanctum (login/register/verify email)
+      untuk memakai semua data + alur SOS dari aplikasi mobile.
+
 --------------------------------------------------------------------------------
 2.  TEKNOLOGI & VERSI
 --------------------------------------------------------------------------------
@@ -43,19 +53,38 @@ statistik, grafik (Chart.js), dan peta interaktif (Leaflet + marker cluster).
         SecurityDashboardController.php  -> Dashboard Ketertiban
         HealthDashboardController.php    -> Dashboard Kesehatan
         MapController.php                -> Peta Gabungan
+        SosController.php                -> peta & detail SOS (index/live/show)
         SchoolController.php, PolsekController.php, TipkamtikmasController.php,
         PoskamlingController.php, MarketController.php, HealthFacilityController.php,
         KecamatanController.php, KelurahanController.php, SubjectController.php,
         UserController.php, ProfileController.php
+        Api/
+          V1/                            -> REST API (/api/v1, autentikasi Sanctum)
+             AuthController, UserController, ProfileController,
+             DashboardController, MapController, AuditController,
+             SchoolController, PolsekController, TipkamtikmasController,
+             PoskamlingController, MarketController, HealthFacilityController,
+             KecamatanController, KelurahanController, SubjectController,
+             SosController (create/index/show/my-open/active-count/
+                            active-incidents/acknowledge/accept/respond/
+                            on-the-way/arrived/resolve/cancel/updateLocation/
+                            responderLocations),
+             NotificationController (index, markRead)
         Controller.php                   -> base (memakai trait AuthorizesRequests)
         Concerns/
           HandlesSoftDeletes.php         -> trait trash/restore/force-hapus
-      Requests/         21 Form Request (validasi + otorisasi store/update)
+      Requests/         20 Form Request (validasi + otorisasi store/update)
         Concerns/ValidatesCoordinates.php  (rule validasi lat/long)
-      Models/            11 model Eloquent (termasuk ActivityLog)
+        Api/
+          V1/          StoreSosAlertRequest, AcceptSosAlertRequest,
+                       UpdateResponderLocationRequest (di-handle Api)
+Models/            19 model Eloquent (termasuk ActivityLog, SosAlert,
+                                    ResponderLocation, Notification,
+                                    CommandAlert, ExternalData, dll.)
         Concerns/
           LogsActivity.php               -> trait audit trail untuk model data
-      Policies/          11 policy (otorisasi per model, termasuk ActivityLog)
+        Policies/          14 policy (otorisasi per model, termasuk ActivityLog,
+                                        SosAlertPolicy untuk status SOS)
       Support/Access.php Matriks role terpusat
       Providers/
         AppServiceProvider.php  (Blade::if canwrite, View composer,
@@ -68,9 +97,13 @@ statistik, grafik (Chart.js), dan peta interaktif (Leaflet + marker cluster).
       SecurityDashboardService.php
       HealthDashboardService.php
       MapService.php              (data peta gabungan semua sektor)
+      SosService.php              (alur status SOS, notifikasi via NotificationService)
+      NotificationService.php     (buat baris & tandai-baca notifikasi per user)
   database/
-    factories/          10 factory
-    migrations/         skema tabel + pivot school_subject
+    factories/          14 factory
+    migrations/         28 migrasi (termasuk sos_alerts, sos_responder_locations,
+                        notifications, kolom category/responder di sos_alerts,
+                        kolom responder_type di users)
     seeders/            seeder data contoh (deterministik) + UserSeeder
   resources/
     css/app.css         Tailwind 4 + import CSS Leaflet/markercluster
@@ -90,7 +123,16 @@ statistik, grafik (Chart.js), dan peta interaktif (Leaflet + marker cluster).
 --------------------------------------------------------------------------------
 Model utama dan relasinya (semua memakai SoftDeletes kecuali User/Subject):
 
-  User            : name, email, password, role (admin/operator/viewer)
+  User            : name, email, password, role (admin/operator/viewer),
+                    responder_type (medical/fire/police, nullable)
+  SosAlert        : user_id (sender), category (medical/fire/police), message,
+                    latitude/longitude/accuracy, status (pending/acknowledged/
+                    on_the_way/arrived/resolved/cancelled), responded_by/at,
+                    accepted_by/at, resolved_by/at + relasi user/respondedBy
+  ResponderLocation: sos_alert_id, user_id (petugas), lat/long, accuracy;
+                    riwayat posisi live petugas per SOS (terbaru per user)
+  Notification    : user_id, title, body, type ('sos'), data (array JSON,
+                    berisi sos_alert_id + category), read_at
   Kecamatan       : name, code, deskripsi, lat/long, is_active
       hasMany -> Kelurahan, School, Polsek, Tipkamtikmas, Poskamling,
                  Market, HealthFacility
@@ -120,6 +162,14 @@ Tiga role, dimusatkan di `app/Support/Access.php` dan model `User`:
   - OPERATOR : boleh menulis data operasional (sekolah, polsek, pasar, dll)
                TAPI tidak boleh kelola users dan tidak boleh menulis kecamatan.
   - VIEWER   : read-only (hanya melihat dashboard & data).
+
+Untuk modul SOS, pengguna ber-peran OPERATOR dapat diberi `responder_type`
+(medical/fire/police) menandai mereka sebagai petugas darurat. Saat SOS baru
+dibuat, NotificationService.notifyRelevantResponders() membuat notifikasi
+hanya untuk responder yang responder_type-nya cocok dengan kategori SOS
+(pengecualian: pembuat SOS tidak dinotifikasi). Otorisasi status SOS
+ditangani SosAlertPolicy (mis. hanya sender/petugas kategori cocok yang bisa
+merespon).
 
 Lapisan penerapan (berlapis/defense-in-depth):
   1. POLICY   : App\Policies\*Policy. BaseDataPolicy memanggil
@@ -171,11 +221,48 @@ Semua route di bawah middleware 'auth' (kecuali login/logout):
   GET/PUT /profile          (profil)
   PUT /profile/password     (ganti password)
 
-Route tambahan tiap resource ber-SoftDeletes (Sekolah, Faskes, Kecamatan,
+Resource tambahan tiap resource ber-SoftDeletes (Sekolah, Faskes, Kecamatan,
 Kelurahan, Pasar, Poskamling, Tipkamtikmas):
   GET    {resource}/trash           -> daftar data terhapus (sampah)
   PUT    {resource}/{id}/restore    -> pulihkan (perlu izin restore)
   DELETE {resource}/{id}/force      -> hapus permanen (HANYA admin)
+
+Route modul SOS (web):
+  GET  /sos/active-count            -> jumlah SOS belum selesai (badge sidebar)
+  GET  /sos/live                    -> peta live semua SOS terbuka + posisi
+                                       petugas terbaru (sos.live)
+  GET  /sos/live/{sos}              -> JSON detail + responder untuk halaman
+                                       detail live (dipanggil polling 15 detik)
+  GET  /sos/{sos}                   -> detail SOS + peta sender & petugas
+  POST /sos/{sos}/acknowledge|respond|resolve|cancel
+                                       aksi status dari UI web
+
+REST API  /api/v1  (autentikasi Bearer token Sanctum, throttle login/register):
+  POST   /register, POST /login, POST /logout, GET /me
+  POST   /email/verify, POST /email/verification/resend
+  GET    /dashboard (overview/education/health/security), GET /maps, GET /audit
+  resource CRUD: /users, /profile, /schools, /polseks, /tipkamtikmas,
+                 /poskamlings, /markets, /health/facilities, /kecamatans,
+                 /kelurahans, /subjects  (+ /trash, /{id}/restore, /{id}/force)
+  SOS:
+    POST /sos                     buat SOS (perlu lokasi)
+    GET  /sos                     daftar all (admin/petugas) atau sesuai akses
+    GET  /sos/my-open             SOS terbuka milik user
+    GET  /sos/active-count        jumlah SOS aktif
+    GET  /sos/active-incidents    daftar singkat insiden aktif
+    GET  /sos/{sos}               detail SOS
+    POST /sos/{sos}/acknowledge   petugas menerima tugas
+    POST /sos/{sos}/accept        dan berangkat (penugasan formal)
+    POST /sos/{sos}/respond       balas status yang cocok dengan kategori
+    POST /sos/{sos}/on-the-way    petugas menuju lokasi
+    POST /sos/{sos}/arrived       petugas tiba
+    POST /sos/{sos}/resolve       selesaikan SOS (solver)
+    POST /sos/{sos}/cancel        batalkan SOS (sender/operator/admin)
+    POST /sos/{sos}/location      update posisi petugas (ResponderLocation)
+    GET  /sos/{sos}/responder-locations  riwayat posisi petugas utk peta live
+  Notifikasi:
+    GET  /notifications           daftar notifikasi user (ada status baru)
+    POST /notifications/{id}/read tandai-baca (verifikasi kepemilikan)
 
 --------------------------------------------------------------------------------
 7.  DASHBOARD & SERVICE
@@ -233,10 +320,22 @@ bukan `@json([...])`.
     - handler global [data-confirm] untuk konfirmasi hapus
     - mendaftarkan `kecamatanKelurahan` via document.addEventListener
       ('alpine:init', ...) di dalam @once @push('scripts')
+    - objek `sosLiveDetail`: polling 15 detik ke /sos/live/{sos}, memegang
+      instance map + sender, memanggil maps.renderResponders tiap poll utk
+      memperbarui marker petugas & rute; chip info "rute" (#sos-route-info)
+      menampilkan jarak (km) & estimasi waktu tempuh.
 
   resources/js/charts.js -> window.Mjcc.charts.* helper grafik
   resources/js/maps.js   -> window.Mjcc.maps.* (L, categoryConfig, createMap,
-                            renderMarkers)
+                            renderMarkers, renderResponders)
+    - kategori `responder` (sector 'ketertiban', warna biru #2563eb,
+      emoji 🚓) untuk marker posisi petugas.
+    - renderResponders(map, sender, responders, options): hapus layer lama,
+      gambar marker petugas, bangun polyline biru putus-putus
+      petugas->sender memakai OSRM (router.project-osrm.org,
+      GET /route/v1/driving/{lng,lat};{lng,lat}?overview=full&geometries=geojson),
+      cache hasil rute per koordinat utk hemat request; memanggil
+      options.onRoute({distanceKm, etaMin}).
 
   Build: `npm run build` (produksi) / `npm run dev` (dev, hot reload).
   Jika perubahan frontend tidak terlihat, jalankan salah satu perintah di atas.
@@ -255,6 +354,10 @@ bukan `@json([...])`.
       ke api.kelurahans.by-kecamatan).
 
   Halaman per sektor + CRUD untuk tiap resource.
+  Halaman SOS (resources/views/sos/): index.blade.php (peta live semua SOS
+  terbuka + badge kategori/status + posisi petugas terbaru), show.blade.php
+  (detail + peta sender & petugas + chip info rute) + partials (_timeline,
+  _status_card, _list, _actions).
   Semua label/tulisan memakai Bahasa Indonesia.
 
   Variabel bersama ($currentUser, $flashMessages) disediakan lewat
@@ -280,8 +383,28 @@ bukan `@json([...])`.
                                           permanen (admin vs operator)
     tests/Feature/AlertTest.php          - isyarat sektor (pendidikan/
                                           kesehatan/ketertiban), dashboard render
-
-  (28 test, 100 assertions total)
+    tests/Feature/MapDataTest.php        - JSON peta per sektor + peta gabungan
+    tests/Feature/SearchTest.php         - pencarian lintas resource
+    tests/Feature/DataFreshnessTest.php  - data deterministik, mencegah render
+                                          yang berubah-ubah
+    tests/Feature/KecamatanIntelligenceTest.php - validasi koordinat/lat-long
+    tests/Feature/CommandCenterAccessTest.php   - akses peran ke halaman CC
+    tests/Feature/CommandCenterStatusTest.php   - status/availability CC
+    tests/Feature/SosTest.php            - SOS web + API CRUD/status flow,
+                                          notifikasi ke responder, peta live :
+                                          markah sender/petugas & rute OSRM
+    tests/Feature/SosCategoryTest.php    - kategori (medical/fire/police),
+                                          otorisasi & badge
+    tests/Feature/NotificationTest.php   - buat notifikasi utk responder,
+                                          daftar & tandai-baca
+    tests/Feature/WebUserManagementTest.php - kelola users web (role, password)
+    tests/Feature/Api/*                  - REST API: Auth, Registration,
+                                          EmailVerification, UserManagement,
+                                          Authorization, Dashboard, Map,
+                                          MasterData, Crud, Trash, Profile,
+                                          Audit, RouteNames
+    test yang lain: DataImport, DataScraper, PublicDataPages, DashboardRefresh
+    (272 test, 1173 assertions total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest

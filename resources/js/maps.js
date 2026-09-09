@@ -16,6 +16,7 @@ export const categoryConfig = {
     'Rumah Sakit': { sector: 'kesehatan', color: '#dc2626', emoji: '🏨', label: 'Rumah Sakit' },
     Posyandu: { sector: 'kesehatan', color: '#3b82f6', emoji: '👶', label: 'Posyandu' },
     sos: { sector: 'ketertiban', color: '#dc2626', emoji: '🆘', label: 'SOS Darurat' },
+    responder: { sector: 'ketertiban', color: '#2563eb', emoji: '🚓', label: 'Petugas' },
     'data-publik-pendidikan': { sector: 'pendidikan', color: '#0d9488', emoji: '📊', label: 'Data Publik' },
     'data-publik-kesehatan': { sector: 'kesehatan', color: '#f97316', emoji: '📊', label: 'Data Publik' },
     'data-publik-keamanan': { sector: 'ketertiban', color: '#7c3aed', emoji: '📊', label: 'Data Publik' },
@@ -171,4 +172,104 @@ export function legendItems(categories) {
         category,
         ...(categoryConfig[category] ?? { color: '#64748b', label: category, emoji: '📍' }),
     }));
+}
+
+/**
+ * Renders petugas (responder) markers plus a road route from each petugas
+ * back toward the requested location. The route is fetched on-demand from the
+ * public OSRM demo server and drawn as a dashed polyline, mirroring the
+ * "versi live" tracking in the mobile app.
+ */
+export function renderResponders(map, sender, responders, options = {}) {
+    if (!map || !Array.isArray(responders)) {
+        return;
+    }
+
+    const store = map._mjccStore || (map._mjccStore = {});
+    store.responderMarkers = store.responderMarkers || [];
+    store.routeLayers = store.routeLayers || [];
+    store.routeFetches = store.routeFetches || {};
+
+    // drop the previous responder markers + route lines
+    store.responderMarkers.forEach((m) => {
+        try {
+            map.removeLayer(m);
+        } catch (e) { /* already removed */ }
+    });
+    store.routeLayers.forEach((l) => {
+        try {
+            map.removeLayer(l);
+        } catch (e) { /* already removed */ }
+    });
+    store.responderMarkers = [];
+    store.routeLayers = [];
+
+    if (!sender) {
+        return;
+    }
+
+    const from = { lat: Number(sender.latitude), lng: Number(sender.longitude) };
+    if (!Number.isFinite(from.lat) || !Number.isFinite(from.lng)) {
+        return;
+    }
+
+    responders.forEach((r) => {
+        const to = { lat: Number(r.latitude), lng: Number(r.longitude) };
+        if (!Number.isFinite(to.lat) || !Number.isFinite(to.lng)) {
+            return;
+        }
+
+        const marker = L.marker([to.lat, to.lng], { icon: iconFor('responder', options.size ?? 30) });
+        marker.bindPopup(popupHtml(r));
+        marker.addTo(map);
+        store.responderMarkers.push(marker);
+
+        const cacheKey = `${r.id ?? ''}:${to.lat.toFixed(5)},${to.lng.toFixed(5)}`;
+        const cached = store.routeFetches[cacheKey];
+
+        const addLine = (points) => {
+            const line = L.polyline(points, {
+                color: options.routeColor ?? '#2563eb',
+                weight: options.routeWeight ?? 4,
+                opacity: options.routeOpacity ?? 0.75,
+                dashArray: '8 10',
+            }).addTo(map);
+            store.routeLayers.push(line);
+        };
+
+        // Already fetched earlier: re-draw from cache without hitting OSRM again.
+        if (Array.isArray(cached)) {
+            addLine(cached);
+            return;
+        }
+        if (cached === true) {
+            return; // a fetch is in flight; it will draw when it resolves
+        }
+
+        store.routeFetches[cacheKey] = true;
+
+        // OSRM: geometry in GeoJSON. Route from petugas -> requester.
+        const url =
+            'https://router.project-osrm.org/route/v1/driving/' +
+            `${to.lng},${to.lat};${from.lng},${from.lat}?overview=full&geometries=geojson&steps=false`;
+
+        fetch(url)
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                const coords = data?.routes?.[0]?.geometry?.coordinates;
+                if (!Array.isArray(coords) || coords.length < 2) {
+                    return;
+                }
+                const points = coords.map(([lng, lat]) => [lat, lng]);
+                store.routeFetches[cacheKey] = points;
+                addLine(points);
+
+                const distanceKm = ((data.routes[0].distance ?? 0) / 1000).toFixed(1);
+                const etaMin = Math.round((data.routes[0].duration ?? 0) / 60);
+                if (typeof options.onRoute === 'function') {
+                    options.onRoute({ distanceKm, etaMin, responder: r });
+                }
+            })
+            .catch(() => { /* routing unavailable: keep markers */ });
+    });
 }

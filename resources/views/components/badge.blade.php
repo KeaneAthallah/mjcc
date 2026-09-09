@@ -11,6 +11,7 @@
         'gray' => 'bg-gray-100 text-gray-700',
         'indigo' => 'bg-indigo-100 text-indigo-700',
         'teal' => 'bg-teal-100 text-teal-700',
+        'orange' => 'bg-orange-100 text-orange-700',
         'violet' => 'bg-violet-100 text-violet-700',
     ];
 @endphp

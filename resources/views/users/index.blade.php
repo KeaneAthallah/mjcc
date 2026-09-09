@@ -42,12 +42,27 @@
                                         <a href="{{ route('users.show', $user) }}" class="font-bold text-gray-800 hover:text-emerald-600">{{ $user->name }} @if ($user->id === $currentUser->id)<span class="text-[10px] text-emerald-600 font-bold">(Anda)</span>@endif</a>
                                     </div>
                                 </td>
-                                <td class="px-2 py-3 text-gray-600">{{ $user->email }}</td>
+                                <td class="px-2 py-3">
+                                    <div class="text-gray-600">{{ $user->email }}</div>
+                                    <x-badge color="{{ $user->hasVerifiedEmail() ? 'green' : 'amber' }}">{{ $user->hasVerifiedEmail() ? 'Terverifikasi' : 'Belum diverifikasi' }}</x-badge>
+                                </td>
                                 <td class="text-center px-2 py-3">
-                                    <x-badge color="{{ match($user->role) { 'admin' => 'red', 'operator' => 'blue', default => 'green' } }}">{{ ucfirst($user->role) }}</x-badge>
+                                    <div class="flex flex-col items-center gap-1">
+                                        <x-badge color="{{ match($user->role) { 'admin' => 'red', 'operator' => 'blue', default => 'green' } }}">{{ ucfirst($user->role) }}</x-badge>
+                                        @if ($user->responder_type)
+                                            <x-badge color="{{ match($user->responder_type) { 'medical' => 'teal', 'fire' => 'orange', default => 'indigo' } }}">{{ $user->responder_type_label }}</x-badge>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="text-right px-4 py-3">
                                     <div class="inline-flex gap-1">
+                                        <form method="POST" action="{{ route('users.verify-email', $user) }}">@csrf
+                                            @if ($user->hasVerifiedEmail())
+                                                <button type="submit" name="verified" value="0" class="p-1.5 rounded-lg hover:bg-amber-50 text-amber-600" title="Tandai Belum Diverifikasi">⏸️</button>
+                                            @else
+                                                <button type="submit" name="verified" value="1" class="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600" title="Verifikasi Email">✅</button>
+                                            @endif
+                                        </form>
                                         <a href="{{ route('users.edit', $user) }}" class="p-1.5 rounded-lg hover:bg-gray-100 text-blue-600" title="Ubah">✏️</a>
                                         @if ($user->id !== $currentUser->id)
                                             <a href="{{ route('users.destroy', $user) }}"

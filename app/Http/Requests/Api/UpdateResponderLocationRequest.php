@@ -3,16 +3,15 @@
 namespace App\Http\Requests\Api;
 
 use App\Http\Requests\Concerns\ValidatesCoordinates;
-use App\Models\SosAlert;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreSosAlertRequest extends FormRequest
+class UpdateResponderLocationRequest extends FormRequest
 {
     use ValidatesCoordinates;
 
     public function authorize(): bool
     {
-        return $this->user()->can('create', SosAlert::class);
+        return $this->user()->can('updateLocation', $this->route('sos'));
     }
 
     /**
@@ -25,9 +24,6 @@ class StoreSosAlertRequest extends FormRequest
         return [
             'latitude' => $c['latitude'],
             'longitude' => $c['longitude'],
-            'accuracy' => ['nullable', 'numeric', 'between:0,1000'],
-            'category' => ['nullable', 'string', 'in:general,medical,fire,police'],
-            'message' => ['nullable', 'string', 'max:500'],
         ];
     }
 }

@@ -92,4 +92,27 @@ class UserController extends Controller
             ->route('users.index')
             ->with('success', 'Pengguna berhasil dihapus.');
     }
+
+    public function verifyEmail(Request $request, User $user): RedirectResponse
+    {
+        $this->authorize('update', $user);
+
+        $verified = filter_var($request->input('verified', true), FILTER_VALIDATE_BOOL);
+
+        if ($user->hasVerifiedEmail() === $verified) {
+            return back()->with('info', 'Status verifikasi email "'.$user->email.'" sudah sesuai.');
+        }
+
+        if ($verified) {
+            $user->markEmailAsVerified();
+        } else {
+            $user->forceFill(['email_verified_at' => null])->save();
+        }
+
+        $message = $verified
+            ? 'Email "'.$user->email.'" berhasil diverifikasi.'
+            : 'Email "'.$user->email.'" berhasil ditandai belum terverifikasi.';
+
+        return back()->with('success', $message);
+    }
 }

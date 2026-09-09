@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ActivityLog;
+use App\Models\ResponderLocation;
 use App\Models\SosAlert;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
@@ -194,6 +195,73 @@ it('returns the owners open alert via my-open and null otherwise', function () {
     $operator = User::factory()->operator()->create();
     Sanctum::actingAs($operator);
     $this->getJson('/api/v1/sos/my-open')->assertOk()->assertJsonPath('data', null);
+});
+
+it('mirrors the latest petugas location onto the live map and web detail page', function () {
+    $admin = User::factory()->admin()->create();
+    $petugas = User::factory()->create(['name' => 'Bripka Andi', 'responder_type' => 'police']);
+    $sos = SosAlert::factory()->active()->create([
+        'category' => 'police',
+        'accepted_by' => $petugas->id,
+        'accepted_at' => now(),
+    ]);
+
+    ResponderLocation::create([
+        'sos_alert_id' => $sos->id,
+        'user_id' => $petugas->id,
+        'latitude' => -2.5,
+        'longitude' => 121.5,
+    ]);
+
+    $this->actingAs($admin)->get('/sos/live')->assertOk()
+        ->assertJsonCount(2, 'markers')
+        ->assertJsonPath('markers.1.category', 'responder');
+
+    $this->actingAs($admin)->get("/sos/live/{$sos->id}")->assertOk()
+        ->assertJsonCount(1, 'responders')
+        ->assertJsonPath('responders.0.category', 'responder')
+        ->assertJsonPath('responders.0.name', 'Bripka Andi')
+        ->assertJsonPath('responders.0.details.Peran', 'Polisi');
+
+    $this->actingAs($admin)->get("/sos/{$sos->id}")->assertOk()
+        ->assertSee('Bripka Andi')
+        ->assertSee('sos-route-info');
+});
+
+it('shows only the newest petugas location per responder on the web', function () {
+    $admin = User::factory()->admin()->create();
+    $petugas = User::factory()->create(['name' => 'Petugas 1', 'responder_type' => 'medical']);
+    $sos = SosAlert::factory()->active()->create([
+        'category' => 'medical',
+        'accepted_by' => $petugas->id,
+        'accepted_at' => now(),
+    ]);
+
+    $later = now()->addMinute();
+
+    ResponderLocation::create([
+        'sos_alert_id' => $sos->id,
+        'user_id' => $petugas->id,
+        'latitude' => -2.1,
+        'longitude' => 121.1,
+        'created_at' => now(),
+    ]);
+    ResponderLocation::create([
+        'sos_alert_id' => $sos->id,
+        'user_id' => $petugas->id,
+        'latitude' => -2.2,
+        'longitude' => 121.2,
+        'created_at' => $later,
+    ]);
+
+    $this->actingAs($admin)->get('/sos/live')->assertOk()
+        ->assertJsonCount(2, 'markers')
+        ->assertJsonPath('markers.1.category', 'responder');
+
+    $this->actingAs($admin)->get("/sos/live/{$sos->id}")->assertOk()
+        ->assertJsonCount(1, 'responders')
+        ->assertJsonPath('responders.0.latitude', -2.2)
+        ->assertJsonPath('responders.0.longitude', 121.2);
 });
 
 it('serves live hub data: counts, open-alert markers, and the list fragment', function () {

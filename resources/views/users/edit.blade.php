@@ -30,6 +30,17 @@
                         @error('role') <p class="text-[11px] text-red-600 font-medium mt-1">{{ $message }}</p> @enderror
                     </div>
                 </div>
+                <div>
+                    <label class="block text-[12px] font-bold text-gray-700 mb-1.5">Peran Petugas</label>
+                    <select name="responder_type"
+                            class="w-full rounded-xl border text-[13px] px-3 py-2.5 bg-white focus:outline-none focus:ring-2 transition {{ $errors->has('responder_type') ? 'border-red-400 focus:ring-red-200' : 'border-gray-300 focus:ring-emerald-200 focus:border-emerald-500' }}">
+                        <option value="">Bukan petugas</option>
+                        <option value="medical" @selected(old('responder_type', $user->responder_type) === 'medical')>Medis</option>
+                        <option value="fire" @selected(old('responder_type', $user->responder_type) === 'fire')>Pemadam Kebakaran</option>
+                        <option value="police" @selected(old('responder_type', $user->responder_type) === 'police')>Polisi</option>
+                    </select>
+                    @error('responder_type') <p class="text-[11px] text-red-600 font-medium mt-1">{{ $message }}</p> @enderror
+                </div>
             </div>
         </x-card>
 

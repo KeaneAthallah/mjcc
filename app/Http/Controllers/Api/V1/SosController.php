@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\AcceptSosAlertRequest;
 use App\Http\Requests\Api\AcknowledgeSosAlertRequest;
 use App\Http\Requests\Api\ResolveSosAlertRequest;
 use App\Http\Requests\Api\RespondSosAlertRequest;
 use App\Http\Requests\Api\StoreSosAlertRequest;
+use App\Http\Requests\Api\UpdateResponderLocationRequest;
+use App\Http\Resources\ResponderLocationResource;
 use App\Http\Resources\SosAlertResource;
 use App\Http\Responses\ApiResponse;
 use App\Models\SosAlert;
@@ -42,7 +45,7 @@ class SosController extends Controller
                 ->when($request->filled('to'), fn (Builder $q) => $q->whereDate('created_at', '<=', $request->date('to')));
 
             $paginator = $query
-                ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'acknowledged' THEN 1 WHEN 'responding' THEN 2 WHEN 'resolved' THEN 3 ELSE 4 END")
+                ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'acknowledged' THEN 1 WHEN 'responding' THEN 2 WHEN 'accepted' THEN 3 WHEN 'on_the_way' THEN 4 WHEN 'arrived' THEN 5 WHEN 'resolved' THEN 6 ELSE 7 END")
                 ->latest('created_at')
                 ->paginate($this->perPage($request))
                 ->withQueryString();
@@ -64,7 +67,7 @@ class SosController extends Controller
     {
         $this->authorize('view', $sos);
 
-        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name']);
+        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name', 'acceptedBy:id,name']);
 
         return ApiResponse::success(new SosAlertResource($sos));
     }
@@ -117,6 +120,94 @@ class SosController extends Controller
     }
 
     /**
+     * Responder accepts an active SOS.
+     */
+    public function accept(AcceptSosAlertRequest $request, SosAlert $sos): JsonResponse
+    {
+        $sos = $this->service->accept($sos, $request->user());
+
+        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name', 'acceptedBy:id,name']);
+
+        return ApiResponse::success(new SosAlertResource($sos), 'SOS berhasil diterima oleh petugas.');
+    }
+
+    /**
+     * Responder marks themselves as on the way.
+     */
+    public function onTheWay(Request $request, SosAlert $sos): JsonResponse
+    {
+        $sos = $this->service->onTheWay($sos, $request->user());
+
+        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name', 'acceptedBy:id,name']);
+
+        return ApiResponse::success(new SosAlertResource($sos), 'Status diperbarui menjadi sedang menuju lokasi.');
+    }
+
+    /**
+     * Responder marks themselves as arrived.
+     */
+    public function arrived(Request $request, SosAlert $sos): JsonResponse
+    {
+        $sos = $this->service->arrived($sos, $request->user());
+
+        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name', 'acceptedBy:id,name']);
+
+        return ApiResponse::success(new SosAlertResource($sos), 'Status diperbarui menjadi tiba di lokasi.');
+    }
+
+    /**
+     * Update responder's live location.
+     */
+    public function updateLocation(UpdateResponderLocationRequest $request, SosAlert $sos): JsonResponse
+    {
+        $this->authorize('updateLocation', $sos);
+
+        $this->service->updateResponderLocation(
+            $sos->id,
+            $request->user(),
+            $request->validated('latitude'),
+            $request->validated('longitude'),
+        );
+
+        return ApiResponse::success(null, 'Lokasi responder berhasil diperbarui.');
+    }
+
+    /**
+     * Latest live location of each responder assigned to an alert, so the
+     * requester can watch the petugas approach on a map.
+     */
+    public function responderLocations(SosAlert $sos): JsonResponse
+    {
+        $this->authorize('viewResponderLocations', $sos);
+
+        $locations = $this->service->getLatestResponderLocations($sos);
+
+        return ApiResponse::success(
+            ResponderLocationResource::collection($locations)->resolve(),
+            'Lokasi petugas berhasil diambil.',
+        );
+    }
+
+    /**
+     * Active incidents matching the responder's type.
+     */
+    public function activeIncidents(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user->isResponder() && ! $user->isAdmin()) {
+            return ApiResponse::error('Hanya responder yang dapat melihat insiden aktif.', 403);
+        }
+
+        $incidents = $this->service->getActiveIncidentsForResponder($user);
+
+        return ApiResponse::success(
+            SosAlertResource::collection($incidents)->resolve(),
+            'Insiden aktif berhasil diambil.',
+        );
+    }
+
+    /**
      * Efficient open-alert count for the notification badge.
      */
     public function activeCount(Request $request): JsonResponse
@@ -152,6 +243,9 @@ class SosController extends Controller
             SosAlert::STATUS_ACTIVE => SosAlert::STATUS_ACTIVE,
             SosAlert::STATUS_ACKNOWLEDGED => SosAlert::STATUS_ACKNOWLEDGED,
             SosAlert::STATUS_RESPONDING => SosAlert::STATUS_RESPONDING,
+            SosAlert::STATUS_ACCEPTED => SosAlert::STATUS_ACCEPTED,
+            SosAlert::STATUS_ON_THE_WAY => SosAlert::STATUS_ON_THE_WAY,
+            SosAlert::STATUS_ARRIVED => SosAlert::STATUS_ARRIVED,
             SosAlert::STATUS_RESOLVED => SosAlert::STATUS_RESOLVED,
             SosAlert::STATUS_CANCELLED => SosAlert::STATUS_CANCELLED,
         ];
