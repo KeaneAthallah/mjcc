@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PolsekController;
 use App\Http\Controllers\Api\V1\PoskamlingController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\PublicController;
 use App\Http\Controllers\Api\V1\SchoolController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SubjectController;
@@ -25,6 +26,25 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:register');
     Route::post('email/verify', [AuthController::class, 'verifyEmail'])->middleware('throttle:email_verify');
     Route::post('email/verification/resend', [AuthController::class, 'resendVerification'])->middleware('throttle:email_resend');
+
+    // Public "Data Publik" (open read endpoints, no token required)
+    Route::prefix('public')->name('public.')->group(function () {
+        Route::get('overview', [PublicController::class, 'overview']);
+        Route::get('schools', [PublicController::class, 'schools']);
+        Route::get('schools/{id}', [PublicController::class, 'school']);
+        Route::get('health-facilities', [PublicController::class, 'healthFacilities']);
+        Route::get('health-facilities/{id}', [PublicController::class, 'healthFacility']);
+        Route::get('polseks', [PublicController::class, 'polseks']);
+        Route::get('polseks/{id}', [PublicController::class, 'polsek']);
+        Route::get('poskamlings', [PublicController::class, 'poskamlings']);
+        Route::get('poskamlings/{id}', [PublicController::class, 'poskamling']);
+        Route::get('tipkamtikmas', [PublicController::class, 'tipkamtikmas']);
+        Route::get('tipkamtikmas/{id}', [PublicController::class, 'tipkamtikmasShow']);
+        Route::get('markets', [PublicController::class, 'markets']);
+        Route::get('markets/{id}', [PublicController::class, 'market']);
+        Route::get('kelurahans', [PublicController::class, 'kelurahans']);
+        Route::get('kelurahans/{id}', [PublicController::class, 'kelurahan']);
+    });
 
     Route::middleware('auth:sanctum')->group(function () {
         // Auth

@@ -371,7 +371,44 @@ Non-admin → **403**. Setiap mutasi data melalui API otomatis menghasilkan entr
 
 ---
 
-## 11. Daftar lengkap endpoint
+## 11. Data Publik (tanpa token)
+
+Endpoint **read-only** untuk sektor publik — **tidak memerlukan token autentikasi**: hanya `GET`.
+
+Prefix: `/api/v1/public`. Envelope, filter, pencarian, urutan & paginasi mengikuti Bab 2 dan Bab 4. Detail memakai `findOrFail` (404 saat tidak ditemukan).
+
+| Method | URI | Keterangan |
+|--------|-----|------------|
+| GET | `/api/v1/public/overview` | Ringkasan statistik seluruh sektor publik |
+| GET | `/api/v1/public/schools` | Sekolah (search, `school_type`, `kecamatan_id`, sort) |
+| GET | `/api/v1/public/schools/{id}` | Detail sekolah |
+| GET | `/api/v1/public/health-facilities` | Faskes (search, `facility_type`, `kecamatan_id`, sort) |
+| GET | `/api/v1/public/health-facilities/{id}` | Detail faskes |
+| GET | `/api/v1/public/polseks` | Polsek (search, `kecamatan_id`) |
+| GET | `/api/v1/public/polseks/{id}` | Detail polsek |
+| GET | `/api/v1/public/poskamlings` | Poskamling (search, `status`, `kecamatan_id`) |
+| GET | `/api/v1/public/poskamlings/{id}` | Detail poskamling |
+| GET | `/api/v1/public/tipkamtikmas` | Tipkamtikmas (search, `status`, `kecamatan_id`) |
+| GET | `/api/v1/public/tipkamtikmas/{id}` | Detail tipkamtikmas |
+| GET | `/api/v1/public/markets` | Pasar (search, `status`, `kecamatan_id`) |
+| GET | `/api/v1/public/markets/{id}` | Detail pasar |
+| GET | `/api/v1/public/kelurahans` | Kelurahan (search, `kecamatan_id`) |
+| GET | `/api/v1/public/kelurahans/{id}` | Detail kelurahan |
+
+`GET /api/v1/public/overview` mengembalikan bentuk berikut dalam `data`:
+
+```json
+{
+  "pendidikan": { "sekolah": 0, "siswa": 0, "guru": 0, "sd": 0, "smp": 0 },
+  "kesehatan": { "faskes": 0, "puskesmas": 0, "pustu": 0, "rs": 0, "posyandu": 0, "dokter": 0, "perawat": 0, "bidan": 0 },
+  "ketertiban": { "polsek": 0, "poskamling": 0, "poskamling_aktif": 0, "tipkamtikmas": 0 },
+  "fasilitas": { "pasar": 0, "kecamatan": 0, "kelurahan": 0, "penduduk": 0 }
+}
+```
+
+---
+
+## 12. Daftar lengkap endpoint
 
 | Method | URI | Auth | Peran |
 |--------|-----|------|-------|
@@ -400,10 +437,18 @@ Non-admin → **403**. Setiap mutasi data melalui API otomatis menghasilkan entr
 | CRUD | `/api/v1/kelurahans` (+trash/restore/force) | sanctum | lihat:semua, tulis:op/admin |
 | CRUD | `/api/v1/subjects` | sanctum | lihat:semua, tulis:op/admin |
 | CRUD | `/api/v1/users` | sanctum | admin |
+| GET | `/api/v1/public/overview` | — | publik |
+| GET | `/api/v1/public/schools` (+`/{id}`) | — | publik |
+| GET | `/api/v1/public/health-facilities` (+`/{id}`) | — | publik |
+| GET | `/api/v1/public/polseks` (+`/{id}`) | — | publik |
+| GET | `/api/v1/public/poskamlings` (+`/{id}`) | — | publik |
+| GET | `/api/v1/public/tipkamtikmas` (+`/{id}`) | — | publik |
+| GET | `/api/v1/public/markets` (+`/{id}`) | — | publik |
+| GET | `/api/v1/public/kelurahans` (+`/{id}`) | — | publik |
 
 ---
 
-## 12. Contoh alur Flutter
+## 13. Contoh alur Flutter
 
 **Login & sesi:**
 

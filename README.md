@@ -34,6 +34,7 @@ Dibangun dengan **Laravel 13** (PHP 8.3+) dan dilengkapi **Sanctum** untuk auten
 - ✉️ **Registrasi Publik & Verifikasi Email** — pendaftaran mandiri lewat API (role selalu diset `viewer` oleh backend) dikonfirmasi dengan kode verifikasi 6 digit sekali pakai yang dikirim via email.
 - 📜 **Log Aktivitas (Audit Trail)** — setiap aksi tercatat dan password tidak pernah tersimpan di log.
 - 📊 **Data Publik (Sumber Eksternal)** — penghimpun data statistik terbuka dari portal Satu Data Morowali (`data.morowalikab.go.id`) untuk sektor Pendidikan, Kesehatan, dan Keamanan, dengan tampilan khusus, sinkronisasi terjadwal, serta resolusi lokasi ke koordinat peta (geocoding).
+- 🌐 **API Publik `/api/v1/public`** — endpoint read-only **tanpa token** untuk sektor Pendidikan, Kesehatan, Ketertiban, dan Fasilitas Publik (overview, daftar, dan detail), siap dikonsumsi aplikasi Android.
 - 📱 **REST API `/api/v1`** — endpoint lengkap untuk aplikasi Android (Flutter) dengan envelope JSON konsisten.
 
 ---
@@ -157,8 +158,9 @@ Aplikasi menyediakan API lengkap di prefix `/api/v1`:
 - **Peta:** `/api/v1/maps`
 - **CRUD:** schools, polseks, tipkamtikmas, poskamlings, markets, health facilities, kecamatans, kelurahans, subjects, users
 - **Audit log (admin):** `/api/v1/audit`
+- **Data Publik (tanpa token):** `/api/v1/public/overview` + daftar/detail `schools`, `health-facilities`, `polseks`, `poskamlings`, `tipkamtikmas`, `markets`, `kelurahans`
 
-Setiap request selain `login`, `register`, `email/verify`, dan `email/verification/resend` membutuhkan header `Authorization: Bearer <token>` dan `Accept: application/json`.
+Setiap request selain `login`, `register`, `email/verify`, `email/verification/resend`, dan seluruh endpoint `/api/v1/public/*` membutuhkan header `Authorization: Bearer <token>` dan `Accept: application/json`.
 
 📖 Dokumentasi lengkap: [`docs/API.md`](docs/API.md)
 📱 Panduan integrasi Flutter: [`docs/FLUTTER_API_INTEGRATION.md`](docs/FLUTTER_API_INTEGRATION.md)
