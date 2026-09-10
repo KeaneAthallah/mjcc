@@ -1,13 +1,11 @@
 @props([
     'icon' => '📭',
-    'title' => 'Tidak ada data',
-    'description' => null,
+    'title' => 'Data belum tersedia',
+    'message' => 'Sumber data belum berhasil disinkronkan.',
 ])
 
-<div class="text-center py-16 px-6">
-    <div class="text-5xl mb-4">{{ $icon }}</div>
-    <h3 class="text-[15px] font-extrabold text-gray-700">{{ $title }}</h3>
-    @if ($description)
-        <p class="text-[13px] text-gray-400 mt-1 max-w-sm mx-auto">{{ $description }}</p>
-    @endif
+<div class="p-10 text-center">
+    <div class="text-5xl mb-3">{{ $icon }}</div>
+    <p class="text-[14px] font-extrabold text-gray-700">{{ $title }}</p>
+    <p class="text-[12.5px] text-gray-500 mt-1">{{ $message }}</p>
 </div>

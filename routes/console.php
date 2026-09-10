@@ -9,8 +9,15 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 if (config('public_data.enabled')) {
-    Schedule::command('data:sync')
+    Schedule::command('public-data:sync')
         ->dailyAt(config('public_data.schedule', '03:00'))
+        ->withoutOverlapping()
+        ->onOneServer()
+        ->runInBackground()
+        ->name('public-data:sync');
+
+    Schedule::command('data:sync')
+        ->dailyAt('04:00')
         ->withoutOverlapping()
         ->onOneServer()
         ->runInBackground()

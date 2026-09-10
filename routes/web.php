@@ -17,6 +17,7 @@ use App\Http\Controllers\PolsekController;
 use App\Http\Controllers\PoskamlingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicDataController;
+use App\Http\Controllers\PublicDataDashboardController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SecurityDashboardController;
@@ -89,7 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/maps', [MapController::class, 'index'])->name('maps.index');
     Route::get('/maps/data', [MapController::class, 'data'])->name('maps.data');
 
-    // Data Publik (Satu Data Morowali)
+    // Data Publik (Satu Data Morowali) - Legacy routes
     Route::get('/data-publik', [PublicDataController::class, 'index'])->name('public-data.index');
     Route::get('/data-publik/{sector}', [PublicDataController::class, 'show'])
         ->whereIn('sector', ['pendidikan', 'kesehatan', 'keamanan'])
@@ -97,6 +98,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/data-publik/{sector}/dataset/{dataset}', [PublicDataController::class, 'dataset'])
         ->whereIn('sector', ['pendidikan', 'kesehatan', 'keamanan'])
         ->name('public-data.dataset');
+
+    // Data Publik Multi-Source (Public Data Intelligence Center)
+    Route::prefix('data-publik-multi')->name('public-data.')->group(function () {
+        Route::get('/', [PublicDataDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/kategori/{category}', [PublicDataDashboardController::class, 'category'])->name('category');
+        Route::get('/sumber/{sourceKey}', [PublicDataDashboardController::class, 'source'])->name('source');
+        Route::post('/sinkronisasi/{sourceKey}', [PublicDataDashboardController::class, 'syncSource'])->name('sync-source');
+        Route::post('/sinkronisasi', [PublicDataDashboardController::class, 'syncAll'])->name('sync-all');
+    });
 
     // Sinkronisasi Data Publik → Data Master (admin + operator via policy)
     Route::get('/sinkronisasi', [DataImportController::class, 'index'])->name('data-import.index');

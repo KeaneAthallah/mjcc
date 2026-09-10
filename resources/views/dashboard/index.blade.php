@@ -184,6 +184,50 @@
         </div>
     </x-dashboard-section>
 
+    {{-- Pusat Data Publik (multi-source) --}}
+    <x-dashboard-section title="Pusat Data Publik" icon="📊"
+                         subtitle="Himpunan data terbuka dari berbagai sumber nasional secara otomatis"
+                         :pad="false">
+        <x-slot:actions>
+            <div class="flex items-center gap-3">
+                <span class="text-[11px] text-gray-400">
+                    Sumber aktif: <strong class="text-gray-700">{{ $publicDataOverview['active_sources'] }}</strong>
+                    @if ($publicDataOverview['last_sync_at'])
+                        · Terakhir: {{ \Illuminate\Support\Carbon::parse($publicDataOverview['last_sync_at'])->translatedFormat('d M Y, H:i') }}
+                    @endif
+                </span>
+                <a href="{{ route('public-data.dashboard') }}"
+                   class="text-[12px] font-bold text-violet-700 hover:text-violet-900 hover:underline">
+                    Buka Pusat Data →
+                </a>
+            </div>
+        </x-slot:actions>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4">
+            <x-stat-card label="Total Rekaman" :value="number_format($publicDataOverview['total_records'])" icon="🗃️" color="emerald"/>
+            <x-stat-card label="Total Dataset" :value="number_format($publicData['datasets'])" icon="📚" color="violet"/>
+            <x-stat-card label="Jadwal Sinkron" value="{{ config('public_data.schedule', '03:00') }} WITA" icon="⏰" color="amber"/>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 px-4 pb-4">
+            @foreach ($publicDataOverview['categories'] as $category)
+                <a href="{{ route('public-data.category', $category['key']) }}"
+                   class="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md hover:border-violet-200">
+                    <div class="flex items-center justify-between">
+                        <span class="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center text-lg">{{ $category['icon'] }}</span>
+                        <x-badge color="violet">{{ $category['source_count'] }} sumber</x-badge>
+                    </div>
+                    <div class="mt-3 text-[12.5px] font-bold text-gray-700 group-hover:text-violet-700">{{ $category['label'] }}</div>
+                    <div class="mt-0.5 text-[26px] font-extrabold text-gray-900 leading-none tabular-nums">{{ number_format($category['record_count']) }}</div>
+                    <div class="mt-2 flex items-center justify-between text-[11px] text-gray-400">
+                        <span class="truncate pr-2">{{ $category['description'] }}</span>
+                        <span class="shrink-0 flex items-center gap-1 group-hover:text-violet-600">→</span>
+                    </div>
+                </a>
+            @endforeach
+        </div>
+    </x-dashboard-section>
+
     {{-- Perlu Perhatian --}}
     <x-dashboard-section title="Perlu Perhatian" icon="⚠️"
                          subtitle="Masalah terdeteksi dari data nyata — urut sesuai tingkat keparahan"

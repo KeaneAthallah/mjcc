@@ -180,6 +180,98 @@ export function legendItems(categories) {
  * public OSRM demo server and drawn as a dashed polyline, mirroring the
  * "versi live" tracking in the mobile app.
  */
+export const riskLevelConfig = {
+    Tinggi: { color: '#dc2626', label: 'Tinggi' },
+    Sedang: { color: '#f59e0b', label: 'Sedang' },
+    Rendah: { color: '#10b981', label: 'Rendah' },
+};
+
+/**
+ * Choropleth map untuk Indeks Risiko Bencana (IRBI) per kabupaten.
+ * `geojson` berisi poligon wilayah (fitur KDPKAB), `regionMap` memetakan
+ * kode wilayah -> { name, index, level } untuk pewarnaan.
+ */
+export function createRiskChoropleth(containerId, geojson, regionMap = {}, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        return null;
+    }
+
+    const map = options.map ?? L.map(containerId, { scrollWheelZoom: true }).setView(options.center ?? [-1.8, 120.5], options.zoom ?? 7);
+
+    if (!options.map) {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+    }
+
+    const styleFor = (code) => {
+        const info = regionMap[code];
+        if (!info?.level) {
+            return { fillColor: options.emptyColor ?? '#e5e7eb', color: '#334155', weight: 1, fillOpacity: 0.65, dashArray: '3 4' };
+        }
+        const cfg = riskLevelConfig[info.level] ?? { color: options.emptyColor ?? '#e5e7eb' };
+        return { fillColor: cfg.color, color: '#334155', weight: 1, fillOpacity: 0.7 };
+    };
+
+    const layer = L.geoJSON(geojson, {
+        style: (feature) => styleFor(feature?.properties?.KDPKAB),
+        onEachFeature: (feature, l) => {
+            const code = feature?.properties?.KDPKAB;
+            const info = regionMap[code] ?? null;
+            const name = info?.name ?? feature?.properties?.WADMKK ?? code ?? 'Wilayah';
+            const level = info?.level ?? null;
+            const index = info?.index != null
+                ? Number(info.index).toLocaleString('id-ID', { maximumFractionDigits: 2 })
+                : '—';
+            const chip = level
+                ? `<span style="display:inline-block;padding:1px 10px;border-radius:12px;font-weight:700;color:#fff;background:${riskLevelConfig[level]?.color ?? '#6b7280'}">${level}</span>`
+                : '<span style="color:#9ca3af">Belum ada data</span>';
+            l.bindPopup(`
+                <div style="min-width:170px;font-size:13px">
+                    <div style="font-weight:800;color:#334155;margin-bottom:6px;font-size:14px">${name}</div>
+                    <div style="line-height:1.8">
+                        <div>Indeks Risiko: <strong>${index}</strong></div>
+                        <div>Level: ${chip}</div>
+                        ${options.hazard ? `<div style="color:#6b7280">Bahaya: <strong>${options.hazard}</strong></div>` : ''}
+                    </div>
+                </div>
+            `);
+        },
+    }).addTo(map);
+
+    if (options.fitBounds !== false) {
+        const bounds = layer.getBounds();
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [20, 20] });
+        }
+    }
+
+    if (options.showLegend !== false) {
+        const icon = L.control({ position: 'bottomright' });
+        const legendEl = document.createElement('div');
+        legendEl.className = 'leaflet-bar';
+        legendEl.style.cssText = 'background:#fff;padding:8px 12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.3);font-size:12px;color:#374151;font-weight:600;min-width:110px';
+        legendEl.innerHTML =
+            Object.values(riskLevelConfig)
+                .map((cfg) => `<div style="display:flex;align-items:center;gap:7px;line-height:1.9"><span style="width:13px;height:13px;border-radius:3px;background:${cfg.color};display:inline-block;border:1px solid #334155"></span>${cfg.label}</div>`)
+                .join('') +
+            (options.includeEmpty ? `<div style="display:flex;align-items:center;gap:7px;line-height:1.9"><span style="width:13px;height:13px;border-radius:3px;background:${options.emptyColor ?? '#e5e7eb'};display:inline-block;border:1px solid #334155"></span>Belum ada data</div>` : '');
+        icon.onAdd = () => legendEl;
+        icon.addTo(map);
+    }
+
+    const store = (map._mjccStore = map._mjccStore || {});
+    store.riskLayer = layer;
+    store.riskRegionMap = regionMap;
+
+    if (options.resize) {
+        setTimeout(() => map.invalidateSize(), 120);
+    }
+
+    return map;
+}
+
 export function renderResponders(map, sender, responders, options = {}) {
     if (!map || !Array.isArray(responders)) {
         return;

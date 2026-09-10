@@ -17,6 +17,7 @@ class ExternalData extends Model
     protected $fillable = [
         'sector',
         'source',
+        'source_key',
         'source_url',
         'dataset',
         'topic',

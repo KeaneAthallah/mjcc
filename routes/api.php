@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\PolsekController;
 use App\Http\Controllers\Api\V1\PoskamlingController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PublicController;
+use App\Http\Controllers\Api\V1\PublicDataApiController;
 use App\Http\Controllers\Api\V1\SchoolController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SubjectController;
@@ -44,6 +45,13 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::get('markets/{id}', [PublicController::class, 'market']);
         Route::get('kelurahans', [PublicController::class, 'kelurahans']);
         Route::get('kelurahans/{id}', [PublicController::class, 'kelurahan']);
+    });
+
+    // Public "Data Publik Multi-Source" (open read endpoints, no token required)
+    Route::prefix('public-data')->name('public-data.')->group(function () {
+        Route::get('/categories', [PublicDataApiController::class, 'categories'])->name('categories');
+        Route::get('/sources', [PublicDataApiController::class, 'sources'])->name('sources');
+        Route::get('/sources/{source}', [PublicDataApiController::class, 'show'])->name('source');
     });
 
     Route::middleware('auth:sanctum')->group(function () {

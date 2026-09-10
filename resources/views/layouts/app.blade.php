@@ -87,10 +87,42 @@
                class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('maps.index') ? 'bg-white/10 text-white border-emerald-500' : 'text-white/65 border-transparent' }}">
                 <span class="w-[22px] text-center text-base">🗺️</span>Peta Gabungan
             </a>
-            <a href="{{ route('public-data.index') }}"
-               class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
-                <span class="w-[22px] text-center text-base">📊</span>Data Publik
-            </a>
+            <div x-data="{ open: {{ request()->routeIs('public-data.*') ? 'true' : 'false' }} }">
+                <button @click="open = !open"
+                        class="flex items-center gap-3 px-5 py-3 text-[13px] font-semibold border-l-[3px] transition hover:bg-white/10 hover:text-white w-full text-left {{ request()->routeIs('public-data.*') ? 'bg-white/10 text-white border-violet-400' : 'text-white/65 border-transparent' }}">
+                    <span class="w-[22px] text-center text-base">📊</span>Data Publik
+                    <svg class="ml-auto w-4 h-4 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="open" x-collapse class="ml-6">
+                    <a href="{{ route('public-data.dashboard') }}"
+                       class="flex items-center gap-3 px-5 py-2 text-[12px] font-semibold transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.dashboard') ? 'text-white' : 'text-white/65' }}">
+                        <span class="w-[18px] text-center text-sm">📈</span>Dashboard
+                    </a>
+                    <a href="{{ route('public-data.category', 'pendidikan') }}"
+                       class="flex items-center gap-3 px-5 py-2 text-[12px] font-semibold transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.category', 'pendidikan') ? 'text-white' : 'text-white/65' }}">
+                        <span class="w-[18px] text-center text-sm">🎓</span>Pendidikan
+                    </a>
+                    <a href="{{ route('public-data.category', 'pemantauan') }}"
+                       class="flex items-center gap-3 px-5 py-2 text-[12px] font-semibold transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.category', 'pemantauan') ? 'text-white' : 'text-white/65' }}">
+                        <span class="w-[18px] text-center text-sm">👁️</span>Pemantauan
+                    </a>
+                    <a href="{{ route('public-data.category', 'kebencanaan') }}"
+                       class="flex items-center gap-3 px-5 py-2 text-[12px] font-semibold transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.category', 'kebencanaan') ? 'text-white' : 'text-white/65' }}">
+                        <span class="w-[18px] text-center text-sm">⚠️</span>Kebencanaan
+                    </a>
+                    <a href="{{ route('public-data.category', 'apbd') }}"
+                       class="flex items-center gap-3 px-5 py-2 text-[12px] font-semibold transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.category', 'apbd') ? 'text-white' : 'text-white/65' }}">
+                        <span class="w-[18px] text-center text-sm">💰</span>APBD
+                    </a>
+                    <div class="border-t border-white/10 my-1"></div>
+                    <a href="{{ route('public-data.index') }}"
+                       class="flex items-center gap-3 px-5 py-2 text-[12px] font-semibold transition hover:bg-white/10 hover:text-white {{ request()->routeIs('public-data.index') && !request()->routeIs('public-data.dashboard') && !request()->routeIs('public-data.category') && !request()->routeIs('public-data.source') ? 'text-white' : 'text-white/65' }}">
+                        <span class="w-[18px] text-center text-sm">🏛️</span>Satu Data Morowali
+                    </a>
+                </div>
+            </div>
 
             {{-- Data Master (admin + operator) --}}
             @can('viewAny', \App\Models\School::class)

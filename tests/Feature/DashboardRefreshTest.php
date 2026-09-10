@@ -5,6 +5,7 @@ use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\School;
 use App\Models\User;
+use App\Services\PublicData\SourceRegistry;
 use Illuminate\Support\Facades\Cache;
 
 it('redirects guests to login when trying to refresh the dashboard', function () {
@@ -53,4 +54,17 @@ it('lets a viewer refresh the dashboard', function () {
     $this->actingAs($viewer)
         ->post(route('dashboard.refresh'))
         ->assertRedirect();
+});
+
+it('renders the public data overview section on the dashboard', function () {
+    $user = User::factory()->operator()->create();
+
+    SourceRegistry::seed();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Pusat Data Publik')
+        ->assertSee('Pendidikan')
+        ->assertSee(route('public-data.dashboard'), false);
 });

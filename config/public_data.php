@@ -7,10 +7,9 @@ return [
     | Data Publik Config
     |--------------------------------------------------------------------------
     |
-    | Central configuration for the Data Publik module, which ingests public
-    | statistics from the Satu Data Morowali portal (data.morowalikab.go.id)
-    | for the Education, Health, and Security sectors. Environment values are
-    | read here only; no API keys are required (public pages only).
+    | Central configuration for the Data Publik module. Manages multiple
+    | public data sources including Satu Data Morowali, ATS, Dapodik,
+    | SP2KP, BPS, IRBI, Sitaba, and APBD.
     |
     */
 
@@ -20,43 +19,22 @@ return [
     |--------------------------------------------------------------------------
     | HTTP Client Settings
     |--------------------------------------------------------------------------
-    |
-    | Responsible scraping: honor timeouts, set a descriptive user agent, and
-    | space requests to avoid hammering the government portal.
-    |
     */
     'http' => [
         'timeout' => env('PUBLIC_DATA_HTTP_TIMEOUT', 45),
         'connect_timeout' => env('PUBLIC_DATA_HTTP_CONNECT_TIMEOUT', 10),
-        'user_agent' => env('PUBLIC_DATA_USER_AGENT', 'MorowaliJuaraCommandCenterBot/2.0 (+public-data-sync)'),
+        'user_agent' => env('PUBLIC_DATA_USER_AGENT', 'MorowaliJuaraCommandCenterBot/3.0 (+public-data-sync)'),
         'delay_ms' => env('PUBLIC_DATA_DELAY_MS', 200),
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Schedule
-    |--------------------------------------------------------------------------
-    */
     'schedule' => env('PUBLIC_DATA_SCHEDULE', '03:00'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Cache
-    |--------------------------------------------------------------------------
-    |
-    | How long the catalog/discovery results and UI summaries are cached.
-    |
-    */
     'cache_ttl' => env('PUBLIC_DATA_CACHE_TTL', 3600),
 
     /*
     |--------------------------------------------------------------------------
-    | Satu Data Morowali source
+    | Satu Data Morowali source (backward compatible)
     |--------------------------------------------------------------------------
-    |
-    | The portal is paginated at 10 items per page. `max_pages` bounds the
-    | catalog walk even if the portal grows beyond the verified 85 pages.
-    |
     */
     'satudata' => [
         'base_url' => env('PUBLIC_DATA_SATUDATA_URL', 'https://data.morowalikab.go.id'),
@@ -65,22 +43,6 @@ return [
         'max_pages' => (int) env('PUBLIC_DATA_SATUDATA_MAX_PAGES', 85),
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Sectors
-    |--------------------------------------------------------------------------
-    |
-    | Each sector maps to the topic labels as published on the portal under the
-    | "Bidang" facet. The scraping walk matches dataset topics against these
-    | labels (case-insensitive).
-    |
-    | Verified availability (2026-09-08): Pendidikan = 50 datasets,
-    | Kesehatan = 121, Kesbangpol = 2, Penanggulangan Bencana = 42, Trantibum =
-    | 0. Because no trantibum/police/crime datasets are published, the Security
-    | sector tracks what IS available: Kesbangpol + BPBD (perlindungan
-    | masyarakat) + trantibum stays registered so future data is caught too.
-    |
-    */
     'sectors' => [
         'pendidikan' => [
             'label' => 'Pendidikan',
@@ -98,6 +60,131 @@ return [
                 'Bidang Penanggulangan Bencana',
             ],
         ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Source Categories
+    |--------------------------------------------------------------------------
+    |
+    | Categories used for the sidebar navigation dropdown grouping.
+    |
+    */
+    'categories' => [
+        'pendidikan' => [
+            'label' => 'Pendidikan',
+            'icon' => '🎓',
+            'description' => 'Data pendidikan dan pendidikan anak',
+        ],
+        'pemantauan' => [
+            'label' => 'Pemantauan',
+            'icon' => '📡',
+            'description' => 'Pemantauan data sektoral dan publik',
+        ],
+        'kebencanaan' => [
+            'label' => 'Kebencanaan',
+            'icon' => '⚠️',
+            'description' => 'Risiko dan kejadian bencana',
+        ],
+        'apbd' => [
+            'label' => 'APBD',
+            'icon' => '💰',
+            'description' => 'Monitoring Anggaran Pendapatan dan Belanja Daerah',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Anak Tidak Sekolah (ATS) Source
+    |--------------------------------------------------------------------------
+    */
+    'ats' => [
+        'url' => env('PUBLIC_DATA_ATS_URL', 'https://ats.data.kemendikdasmen.go.id'),
+        'region_code' => env('PUBLIC_DATA_ATS_REGION_CODE', '180700'),
+        'region_name' => 'Kabupaten Morowali',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dapodik Source
+    |--------------------------------------------------------------------------
+    */
+    'dapodik' => [
+        'url' => env('PUBLIC_DATA_DAPODIK_URL', 'https://dapo.kemendikdasmen.go.id'),
+        'region_code' => env('PUBLIC_DATA_DAPODIK_REGION_CODE', '180700'),
+        'region_name' => 'Kabupaten Morowali',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | SP2KP (Pasar & Kebutuhan Pokok) Source
+    |--------------------------------------------------------------------------
+    */
+    'sp2kp' => [
+        'url' => env('PUBLIC_DATA_SP2KP_URL', 'https://sp2kp.kemendag.go.id'),
+        'api_base' => env('PUBLIC_DATA_SP2KP_API_URL', 'https://api-sp2kp.kemendag.go.id'),
+        'region_code' => env('PUBLIC_DATA_SP2KP_REGION_CODE', '7206'),
+        'province_code' => env('PUBLIC_DATA_SP2KP_PROVINCE', '72'),
+        'region_name' => 'Kabupaten Morowali',
+        'market_id' => (int) env('PUBLIC_DATA_SP2KP_MARKET_ID', 606),
+        'market_name' => env('PUBLIC_DATA_SP2KP_MARKET_NAME', 'Pasar Rakyat Bungku Tengah'),
+        'max_variants' => (int) env('PUBLIC_DATA_SP2KP_MAX_VARIANTS', 6),
+        'months_back' => (int) env('PUBLIC_DATA_SP2KP_MONTHS_BACK', 12),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | BPS (Badan Pusat Statistik) Source
+    |--------------------------------------------------------------------------
+    */
+    'bps' => [
+        'app_id' => env('BPS_APP_ID', ''),
+        'base_url' => env('BPS_API_BASE_URL', 'https://webapi.bps.go.id'),
+        'region_code' => env('BPS_REGION_CODE', '7203'),
+        'region_name' => env('BPS_REGION_NAME', 'Kabupaten Morowali'),
+        'province_code' => env('BPS_PROVINCE_CODE', '72'),
+        'max_vars' => (int) env('BPS_MAX_VARS', 30),
+        'timeout' => (int) env('BPS_API_TIMEOUT', 30),
+        'retry_count' => (int) env('BPS_API_RETRY', 3),
+        'retry_delay_ms' => (int) env('BPS_API_RETRY_DELAY', 1000),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | IRBI (Indeks Risiko Bencana Indonesia) Source
+    |--------------------------------------------------------------------------
+    */
+    'irbi' => [
+        'url' => env('PUBLIC_DATA_IRBI_URL', 'https://inarisk.bnpb.go.id'),
+        'region_code' => env('PUBLIC_DATA_IRBI_REGION_CODE', '72.06'),
+        'province_code' => env('PUBLIC_DATA_IRBI_PROVINCE', '72'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sitaba (Bencana Terkini) Source
+    |--------------------------------------------------------------------------
+    */
+    'sitaba' => [
+        'url' => env('PUBLIC_DATA_SITABA_URL', 'https://sitaba.pu.go.id/bencana-terkini'),
+        'api_base' => env('PUBLIC_DATA_SITABA_API_URL', 'https://sitaba.pu.go.id'),
+        'region_name' => 'Sulawesi Tengah',
+        'province' => 'Sulawesi Tengah',
+        'search' => env('PUBLIC_DATA_SITABA_SEARCH', 'MOROWALI'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | APBD (DJPK Kemenkeu) Source
+    |--------------------------------------------------------------------------
+    */
+    'apbd' => [
+        'base_url' => env('PUBLIC_DATA_APBD_BASE_URL', 'https://djpk.kemenkeu.go.id'),
+        'url' => env('PUBLIC_DATA_APBD_URL', '/portal/data/tkdd'),
+        'region_code' => env('PUBLIC_DATA_APBD_REGION_CODE', '72.03'),
+        'region_name' => 'Kabupaten Morowali',
+        'province_code' => env('PUBLIC_DATA_APBD_PROVINCE', '19'),
+        'pemda_code' => env('PUBLIC_DATA_APBD_PEMDA', '06'),
     ],
 
 ];

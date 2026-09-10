@@ -24,6 +24,10 @@ Selain dashboard, aplikasi ini menawarkan:
       (marker sender + petugas + rute OSRM petugas->sender).
   - NOTIFIKASI     : baris notifikasi per-user (disimpan MySQL), dikonsumsi
       aplikasi Android lewat polling, dan daftar notifikasi di UI web/API.
+  - PUBLIK DATA INTELLIGENCE CENTER : sinkronisasi otomatis 8 sumber data
+      eksternal (Satu Data Morowali, ATS, Dapodik, SP2KP, BPS, IRBI,
+      Sitaba/Bencana Terkini, APBD) -> dashboard per sumber + peta choropleth
+      Indeks Risiko Bencana; dijalankan terjadwal via command `public-data:sync`.
   - REST API `/api/v1`  : autentikasi Sanctum (login/register/verify email)
       untuk memakai semua data + alur SOS dari aplikasi mobile.
 
@@ -43,7 +47,12 @@ Selain dashboard, aplikasi ini menawarkan:
 3.  STRUKTUR DIREKTORI UTAMA
 --------------------------------------------------------------------------------
   app/
-    Console/            (perintah artisan - kosong)
+    Console/
+      Commands/
+        PublicDataSyncCommand.php    -> sinkronisasi 8 sumber data publik
+        PublicDataScrapeCommand.php  -> scrape legacy Satu Data Morowali
+        PublicDataGeocodeCommand.php -> geocode record tanpa koordinat
+        DataSyncCommand.php          -> sinkronisasi legacy (data master)
     Http/
       Controllers/      Semua controller
         Auth/AuthController.php
@@ -54,6 +63,10 @@ Selain dashboard, aplikasi ini menawarkan:
         HealthDashboardController.php    -> Dashboard Kesehatan
         MapController.php                -> Peta Gabungan
         SosController.php                -> peta & detail SOS (index/live/show)
+        PublicDataController.php         -> legacy Satu Data Morowali
+        PublicDataDashboardController.php-> Public Data Intelligence Center
+                                            (dashboard/kategori/sumber/sync)
+        DataImportController.php         -> Sinkronisasi ke Data Master
         SchoolController.php, PolsekController.php, TipkamtikmasController.php,
         PoskamlingController.php, MarketController.php, HealthFacilityController.php,
         KecamatanController.php, KelurahanController.php, SubjectController.php,
@@ -65,6 +78,7 @@ Selain dashboard, aplikasi ini menawarkan:
              SchoolController, PolsekController, TipkamtikmasController,
              PoskamlingController, MarketController, HealthFacilityController,
              KecamatanController, KelurahanController, SubjectController,
+             PublicDataApiController (categories/sources/source - tanpa token),
              SosController (create/index/show/my-open/active-count/
                             active-incidents/acknowledge/accept/respond/
                             on-the-way/arrived/resolve/cancel/updateLocation/
@@ -78,9 +92,12 @@ Selain dashboard, aplikasi ini menawarkan:
         Api/
           V1/          StoreSosAlertRequest, AcceptSosAlertRequest,
                        UpdateResponderLocationRequest (di-handle Api)
-Models/            19 model Eloquent (termasuk ActivityLog, SosAlert,
-                                    ResponderLocation, Notification,
-                                    CommandAlert, ExternalData, dll.)
+    Models/            26 model Eloquent (termasuk ActivityLog, SosAlert,
+                                    ResponderLocation, Notification, CommandAlert,
+                                    PublicDataSource, BpsDataset, BpsObservation,
+                                    ApbdRecord, CommodityPrice, DisasterEvent,
+                                    DisasterRiskIndex, ExternalData,
+                                    EmailVerificationCode, dll.)
         Concerns/
           LogsActivity.php               -> trait audit trail untuk model data
         Policies/          14 policy (otorisasi per model, termasuk ActivityLog,
@@ -99,6 +116,23 @@ Models/            19 model Eloquent (termasuk ActivityLog, SosAlert,
       MapService.php              (data peta gabungan semua sektor)
       SosService.php              (alur status SOS, notifikasi via NotificationService)
       NotificationService.php     (buat baris & tandai-baca notifikasi per user)
+      PublicData/                 -> Public Data Intelligence Center
+        SourceRegistry.php        (registri sumber -> adapter + SourceRegistry::sync)
+        HttpClient.php            (Guzzle GET/POST/POST-form + opsi verify=false)
+        DataNormalizer.php        (normalisasi tabel HTML legacy -> ExternalData)
+        SatuDataClient.php        (HTTP client legacy Satu Data Morowali)
+        SatuDataParser.php        (parser HTML dataset legacy)
+        SatuDataScraper.php       (scraper legacy katalog/detail)
+        PublicDataScraper.php     (orchestrator scraper legacy)
+        LocationResolver.php      (resolusi koordinat lokasi legacy)
+        AnakTidakSekolahAdapter.php   (ATS Kemendikdasmen -> ExternalData)
+        DapodikAdapter.php            (Dapodik -> ExternalData)
+        Sp2kpAdapter.php              (harga pasar Kemendag -> CommodityPrice)
+        BpsApiAdapter.php             (webapi.bps.go.id -> BpsObservation)
+        InariskAdapter.php            (IRBI BNPB -> DisasterRiskIndex)
+        SitabaAdapter.php             (bencana terkini PUPR -> DisasterEvent)
+        ApbdAdapter.php               (TKDD Kemkeu -> ApbdRecord)
+        SatuDataMorowaliAdapter.php   (legacy Satu Data Morowali)
   database/
     factories/          14 factory
     migrations/         28 migrasi (termasuk sos_alerts, sos_responder_locations,
@@ -149,6 +183,32 @@ Model utama dan relasinya (semua memakai SoftDeletes kecuali User/Subject):
   Market (Pasar)  : name, status, lat/long
   HealthFacility  : TYPE_PUSKESMAS/PUSTU/RS/POSYANDU; beds, doctors, nurses,
                     midwives, status, phone, deskripsi
+
+Model Public Data Intelligence Center:
+  PublicDataSource : registri sumber data eksternal (key, name, category,
+                    description, source_url, adapter_class, enabled, status,
+                    record_count, last_sync_at, last_success_at, last_error,
+                    sync_duration_ms, config JSON). Di-seed dari
+                    SourceRegistry::SOURCES lewat DatabaseSeeder.
+                    8 sumber: satudata, ats, dapodik, sp2kp, bps, irbi,
+                    sitaba, apbd. Status: pending/success/failed.
+  ExternalData     : data generik per indikator (sector, source_key, dataset,
+                    topic, year, location, indicator, value, unit,
+                    dedupe_key unik) - dipakai ATS & Dapodik.
+  BpsDataset       : metadata dataset BPS (nama, sumber, kategori).
+  BpsObservation   : observasi statistik BPS (dataset_id, region, periode,
+                    tahun, nilai, satuan).
+  CommodityPrice   : harga kebutuhan pokok SP2KP (commodity, variant,
+                    market, price, unit, quantity, percentage_change,
+                    record_date - unik per pasar+variant+tanggal).
+  DisasterEvent    : kejadian bencana terkini Sitaba (disaster_type, name,
+                    location, district, province, event_date, latitude,
+                    longitude, sumber).
+  DisasterRiskIndex: indeks risiko bencana IRBI (region_name, region_code
+                    seperti '72.06', hazard_type, risk_index, risk_level
+                    Rendah/Sedang/Tinggi, year, dedupe_key; lat/long nullable).
+  ApbdRecord       : data TKDD APBD (year, category, indicator, budget_value,
+                    realization_value).
 
 Catatan: koordinat lat/long tersimpan deterministik dari seeder (bukan acak
 per-render), sehingga peta konsisten antar halaman.
@@ -237,6 +297,22 @@ Route modul SOS (web):
   POST /sos/{sos}/acknowledge|respond|resolve|cancel
                                        aksi status dari UI web
 
+Route Public Data Intelligence Center (web, di bawah 'auth', prefix
+/data-publik-multi, name public-data.):
+  GET  /data-publik-multi                    -> dashboard index (kategori)
+  GET  /data-publik-multi/kategori/{category}-> kategori
+  GET  /data-publik-multi/sumber/{sourceKey} -> halaman sumber (tabel,
+                                                    grafik, peta)
+  POST /data-publik-multi/sinkronisasi/{sourceKey} -> sync satu sumber
+  POST /data-publik-multi/sinkronisasi       -> sync semua (admin/operator)
+  (Legacy: GET /data-publik, /data-publik/{pendidikan|kesehatan|keamanan},
+   /data-publik/{sector}/dataset/{dataset} -> PublicDataController, dan
+   GET/POST /sinkronisasi DataImportController.)
+
+Scheduler (routes/console.php, hanya bila config public_data.enabled):
+  public-data:sync -> dailyAt 03:00 (withoutOverlapping, runInBackground)
+  data:sync        -> dailyAt 04:00 (legacy)
+
 REST API  /api/v1  (autentikasi Bearer token Sanctum, throttle login/register):
   POST   /register, POST /login, POST /logout, GET /me
   POST   /email/verify, POST /email/verification/resend
@@ -258,11 +334,15 @@ REST API  /api/v1  (autentikasi Bearer token Sanctum, throttle login/register):
     POST /sos/{sos}/arrived       petugas tiba
     POST /sos/{sos}/resolve       selesaikan SOS (solver)
     POST /sos/{sos}/cancel        batalkan SOS (sender/operator/admin)
-    POST /sos/{sos}/location      update posisi petugas (ResponderLocation)
-    GET  /sos/{sos}/responder-locations  riwayat posisi petugas utk peta live
-  Notifikasi:
-    GET  /notifications           daftar notifikasi user (ada status baru)
-    POST /notifications/{id}/read tandai-baca (verifikasi kepemilikan)
+POST /sos/{sos}/location      update posisi petugas (ResponderLocation)
+     GET  /sos/{sos}/responder-locations  riwayat posisi petugas utk peta live
+   Notifikasi:
+     GET  /notifications           daftar notifikasi user (ada status baru)
+     POST /notifications/{id}/read tandai-baca (verifikasi kepemilikan)
+   Public Data (TANPA token, read-only):
+     GET  /public-data/categories  kategori sumber
+     GET  /public-data/sources     daftar sumber (key, nama, status, jumlah)
+     GET  /public-data/sources/{source}  data per sumber (dengan filter)
 
 --------------------------------------------------------------------------------
 7.  DASHBOARD & SERVICE
@@ -306,6 +386,61 @@ dirakit di controller menjadi array lalu dipakai `@json($dashboardData)`,
 bukan `@json([...])`.
 
 --------------------------------------------------------------------------------
+7.1  PUBLIC DATA INTELLIGENCE CENTER (SINKRONISASI DATA EKSTERNAL)
+--------------------------------------------------------------------------------
+Menggabungkan 8 sumber data publik ke database secara otomatis, tersiklus
+command `php artisan public-data:sync` (terjadwal 03:00). Arsitektur:
+
+  SourceRegistry (registri key -> adapter) -> adapter (fetch/normalize/store)
+  -> tabel target -> dashboard web + REST API read-only.
+
+  1. satudata  : Satu Data Morowali (data.morowalikab.go.id) - legacy scraper
+                 (SatuDataScraper + DataNormalizer) -> ExternalData.
+  2. ats       : Anak Tidak Sekolah (ats.data.kemendikdasmen.go.id),
+                 region 180700. Menarik halaman rangkuman per-kecamatan
+                 (BPB/DO/LTM) -> ExternalData. Browser headers + per-request
+                 verify=false untuk menembus WAF.
+  3. dapodik   : Data Pokok Pendidikan (dapo.kemendikdasmen.go.id), region
+                 180700. Token dari /env.js (regex API_TOKEN), header browser,
+                 Bearer + verify=false -> agregat per kecamatan -> ExternalData.
+  4. sp2kp     : Pasar & Kebutuhan Pokok (api-sp2kp.kemendag.go.id),
+                 pasar 606 (Pasar Rakyat Bungku Tengah), provinsi 72 / kab 7206.
+                 POST export-area-monthly-json utk semua 99 varian (tanggal
+                 wajib YYYY-MM-DD) -> CommodityPrice.
+  5. bps       : webapi.bps.go.id (app_id), region code 7203, ambil variabel
+                 dataset BPS -> BpsObservation.
+  6. irbi      : Indeks Risiko Bencana Indonesia (inarisk.bnpb.go.id).
+                 Ambil /irbi, ekstrak `var irbimapdata` + `var labelmap`,
+                 nama bahaya dari /api/bencana-irbi; riwayat penuh 2015-2025
+                 untuk Morowali (72.06) + tahun terbaru utk seluruh Sulawesi
+                 Tengah (kode '72') -> DisasterRiskIndex. Peta choropleth
+                 memakai GeoJSON statis public/geo/sulteng-kabupaten.geojson.
+  7. sitaba    : Bencana Terkini (sitaba.pu.go.id), list-new-disaster dengan
+                 filter province=SULAWESI TENGAH & search=MOROWALI ->
+                 DisasterEvent.
+  8. apbd      : TKDD (djpk.kemenkeu.go.id), provinsi 19 / pemda 06 ->
+                 ApbdRecord.
+
+  Setiap adapter ber-implementasi Contracts\PublicDataSourceAdapter:
+    fetch(source, config) -> raw; normalize(raw, source) -> array record;
+    store(records, source) -> ['created','updated','failed'] (upsert lewat
+    dedupe_key unik); getSummary(); validateConfig(); name().
+
+  Api\V1\PublicDataApiController menyajikan data per sumber tanpa token
+  (/api/v1/public-data/...). Dashboard web (PublicDataDashboardController)
+  menyajikan statistik, tabel, grafik Chart.js, dan peta per sumber.
+
+  Catatan lapangan (penting):
+    - HttpClient.php method get/post/postForm menerima argumen ke-4
+      `bool $verify = true`; saat false, request memakai
+      ->withoutVerifying() utk melewati WAF (SafeLine) yg menolak sertifikat/
+      verify (mis. Dapodik & ATS).
+    - Dapodik/ATS butuh full browser headers + Accept-Encoding 'gzip, deflate'
+      (jangan 'br' -> cURL error 61 'Invalid content coding').
+    - IRBI: menjalankan full sync pertama memakan waktu (Satu Data ~380s);
+      gunakan `--source=<key>` utk menyinkronkan satu sumber saja.
+
+--------------------------------------------------------------------------------
 8.  FRONTEND
 --------------------------------------------------------------------------------
   resources/css/app.css
@@ -327,7 +462,8 @@ bukan `@json([...])`.
 
   resources/js/charts.js -> window.Mjcc.charts.* helper grafik
   resources/js/maps.js   -> window.Mjcc.maps.* (L, categoryConfig, createMap,
-                            renderMarkers, renderResponders)
+                            renderMarkers, renderResponders,
+                            createRiskChoropleth)
     - kategori `responder` (sector 'ketertiban', warna biru #2563eb,
       emoji 🚓) untuk marker posisi petugas.
     - renderResponders(map, sender, responders, options): hapus layer lama,
@@ -336,6 +472,13 @@ bukan `@json([...])`.
       GET /route/v1/driving/{lng,lat};{lng,lat}?overview=full&geometries=geojson),
       cache hasil rute per koordinat utk hemat request; memanggil
       options.onRoute({distanceKm, etaMin}).
+    - createRiskChoropleth(containerId, geojson, regionMap, options): peta
+      choropleth IRBI. `geojson` = FeatureCollection poligon kabupaten,
+      `regionMap` = { region_code: {name, index, level} } (region_code
+      dicocokkan dengan properti KDPKAB). Warna dari riskLevelConfig
+      (Tinggi merah #dc2626 / Sedang kuning #f59e0b / Rendah hijau
+      #10b981); wilayah tanpa data abu-abu putus-putus; popup menampilkan
+      nama wilayah + indeks + chip level; legend otomatis (kontrol Leaflet).
 
   Build: `npm run build` (produksi) / `npm run dev` (dev, hot reload).
   Jika perubahan frontend tidak terlihat, jalankan salah satu perintah di atas.
@@ -403,8 +546,15 @@ bukan `@json([...])`.
                                           Authorization, Dashboard, Map,
                                           MasterData, Crud, Trash, Profile,
                                           Audit, RouteNames
-    test yang lain: DataImport, DataScraper, PublicDataPages, DashboardRefresh
-    (272 test, 1173 assertions total)
+    tests/Feature/PublicDataPagesTest.php       - halaman web Public Data
+    tests/Feature/PublicDataDashboardTest.php   - dashboard/kategori/sumber
+    tests/Feature/PublicDataApiTest.php         - /api/v1/public-data (tanpa token)
+    tests/Feature/PublicDataSyncCommandTest.php - sinkronisasi 8 sumber via
+                                          Http::fake (stub HTML/JSON per sumber)
+    tests/Feature/PublicDataScraperTest.php     - scraper legacy
+    tests/Feature/PublicDataGeocodeCommandTest.php - geocode record
+    test yang lain: DataImport, DataScraper, DashboardRefresh
+    (323 test, 1355 assertions total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest
@@ -492,6 +642,10 @@ Semua resource ber-SoftDeletes mendukung pemulihan data terhapus:
        viewer@morowali.go.id  / password  (viewer)
      Plus 6 akun demo: budi@, siti@, agus@ (operator),
      dewi@, rudi@ (viewer), nur@ (admin) - semuanya / password.
+  9. (Opsional) Sinkronkan data publik: php artisan public-data:sync
+     (atau per-sumber: php artisan public-data:sync --source=irbi).
+ 10. Jadwalkan scheduler di server (cron memanggil `php artisan schedule:run`)
+     agar `public-data:sync` (03:00) dan `data:sync` (04:00) berjalan otomatis.
 
   Catatan: seeder membuat user admin/operator/viewer + data contoh per sektor.
 

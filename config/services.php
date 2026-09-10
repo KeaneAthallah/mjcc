@@ -36,8 +36,10 @@ return [
     ],
 
     'bps' => [
-        'key' => env('BPS_API_KEY'),
+        'app_id' => env('BPS_APP_ID', ''),
         'base_url' => env('BPS_API_BASE_URL', 'https://webapi.bps.go.id'),
+        'timeout' => (int) env('BPS_API_TIMEOUT', 30),
+        'retry_count' => (int) env('BPS_API_RETRY', 3),
     ],
 
 ];

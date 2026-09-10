@@ -24,6 +24,7 @@ class ExternalDataFactory extends Factory
         return [
             'sector' => $sector,
             'source' => 'satudata',
+            'source_key' => 'satudata',
             'source_url' => 'https://data.morowalikab.go.id/dataset/detail/'.fake()->md5(),
             'dataset' => ucfirst(fake()->words(3, true)),
             'topic' => 'Bidang '.ucfirst($sector),

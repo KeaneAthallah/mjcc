@@ -6,6 +6,7 @@ use App\Models\CommandAlert;
 use App\Models\ExternalData;
 use App\Models\HealthFacility;
 use App\Models\Polsek;
+use App\Models\PublicDataSource;
 use App\Models\PublicDataSync;
 use App\Models\School;
 use App\Services\CommandAlertSyncService;
@@ -109,6 +110,20 @@ class DashboardController extends Controller
             ];
         }
 
+        $publicDataOverview = [
+            'total_records' => (int) PublicDataSource::sum('record_count'),
+            'active_sources' => PublicDataSource::enabled()->count(),
+            'last_sync_at' => PublicDataSource::max('last_sync_at'),
+            'categories' => collect(config('public_data.categories', []))->map(fn (array $cat, string $key) => [
+                'key' => $key,
+                'label' => $cat['label'],
+                'icon' => $cat['icon'],
+                'description' => $cat['description'],
+                'source_count' => PublicDataSource::where('category', $key)->count(),
+                'record_count' => (int) PublicDataSource::where('category', $key)->sum('record_count'),
+            ])->values()->all(),
+        ];
+
         return view('dashboard.index', [
             'stats' => $stats,
             'openAlerts' => $openAlerts,
@@ -116,6 +131,7 @@ class DashboardController extends Controller
             'status' => $status,
             'freshness' => $freshness,
             'publicData' => $publicData,
+            'publicDataOverview' => $publicDataOverview,
             'dashboardData' => $dashboardData,
             'topSekolah' => $this->dashboard->topSekolah(),
             'topPoskamling' => $this->dashboard->topPoskamling(),
