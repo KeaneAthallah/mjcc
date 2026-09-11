@@ -115,12 +115,21 @@ it('assigns curated kecamatan and address to puskesmas without region data in th
 
     $bahodopi = HealthFacility::where('source', 'kemkes')->where('name', 'Puskesmas Bahodopi')->first();
     expect($bahodopi->kecamatan_id)->toBe($this->bahodopi->id)
-        ->and($bahodopi->address)->toBe('Ds. Keurea, Kec. Bahodopi');
+        ->and($bahodopi->address)->toBe('Ds. Keurea, Kec. Bahodopi')
+        ->and((float) $bahodopi->latitude)->toBe((float) $this->bahodopi->latitude)
+        ->and((float) $bahodopi->longitude)->toBe((float) $this->bahodopi->longitude);
 
     $ulunambo = HealthFacility::where('source', 'kemkes')->where('name', 'Puskesmas Ulunambo')->first();
     expect($ulunambo->kecamatan_id)->toBe($this->menuiKepulauan->id)
         ->and($ulunambo->address)->toBe('Kel. Ulunambo, Kec. Menui Kepulauan');
 
     $laantula = HealthFacility::where('source', 'kemkes')->where('name', "Puskesmas La'antula Jaya")->first();
-    expect($laantula->kecamatan_id)->toBe($this->witaPonda->id);
+    expect($laantula->kecamatan_id)->toBe($this->witaPonda->id)
+        ->and((float) $laantula->latitude)->toBe((float) $this->witaPonda->latitude)
+        ->and((float) $laantula->longitude)->toBe((float) $this->witaPonda->longitude);
+
+    foreach (HealthFacility::where('source', 'kemkes')->where('facility_type', HealthFacility::TYPE_PUSKESMAS)->get() as $faskes) {
+        expect($faskes->latitude)->not->toBeNull();
+        expect($faskes->longitude)->not->toBeNull();
+    }
 });

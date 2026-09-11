@@ -215,14 +215,15 @@ class MasterDataImport
     private function puskesmasAttributes(array $row, string $name): array
     {
         [$kecamatanName, $address] = $this->puskesmasLocation($name);
+        $kecamatan = $this->resolveKecamatanByName($kecamatanName);
 
         return [
             'name' => $name,
             'facility_type' => HealthFacility::TYPE_PUSKESMAS,
-            'kecamatan_id' => $this->resolveKecamatanByName($kecamatanName),
+            'kecamatan_id' => $kecamatan?->id,
             'address' => $address,
-            'latitude' => null,
-            'longitude' => null,
+            'latitude' => $kecamatan?->latitude,
+            'longitude' => $kecamatan?->longitude,
             'condition' => 'baik',
             'beds' => 0,
             'doctors' => (int) ($row['dokter'] ?? 0),
@@ -243,13 +244,14 @@ class MasterDataImport
         return self::PUSKESMAS_LOCATIONS[$name] ?? ['', null];
     }
 
-    private function resolveKecamatanByName(string $name): ?int
+    private function resolveKecamatanByName(string $name): ?Kecamatan
     {
         if ($name === '') {
             return null;
         }
 
-        return Kecamatan::whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->value('id');
+        return Kecamatan::whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first(['id', 'latitude', 'longitude']);
     }
 
     /**
