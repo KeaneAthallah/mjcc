@@ -31,7 +31,9 @@ Selain dashboard, aplikasi ini menawarkan:
   - REAL MASTER DATA : pengganti placeholder seeder dengan data nyata
       per-entitas (sekolah via Dapodik, puskesmas via Kemkes SISDMK, pasar via
       SP2KP) lewat `public-data:dapodik-import` dan `public-data:master-replace`;
-      placeholder tanpa sumber publik dinonaktifkan (bukan dihapus).
+      placeholder tanpa sumber publik dinonaktifkan, lalu bisa dihapus permanen
+      via `public-data:master-purge` (sudah dieksekusi, DB kini berisi data
+      nyata di semua sektor).
   - REST API `/api/v1`  : autentikasi Sanctum (login/register/verify email)
       untuk memakai semua data + alur SOS dari aplikasi mobile.
 
@@ -59,6 +61,7 @@ Selain dashboard, aplikasi ini menawarkan:
         PublicDataDapodikImportCommand.php      -> impor sekolah nyata dari snapshot Dapodik
         PublicDataMasterCaptureCommand.php -> ambil snapshot puskesmas (Kemkes) & pasar (SP2KP)
         PublicDataMasterReplaceCommand.php  -> impor snapshot & nonaktifkan data master dummy
+        PublicDataMasterPurgeCommand.php    -> hapus permanen seluruh data master dummy
         DataSyncCommand.php          -> sinkronisasi legacy (data master)
     Http/
       Controllers/      Semua controller
@@ -146,6 +149,8 @@ Selain dashboard, aplikasi ini menawarkan:
                                         snapshot JSON; keduanya HTTP polos)
         MasterDataImport.php          (impor snapshot -> master; tandai 'seed' &
                                         nonaktifkan placeholder dummy)
+        MasterDataPurge.php           (hapus permanen baris 'seed' + sekolah
+                                        placeholder nonaktif)
   database/
     factories/          14 factory
     migrations/         30 migrasi (termasuk sos_alerts, sos_responder_locations,
@@ -207,12 +212,14 @@ poskamlings, tipkamtikmas, markets) menandai asal tiap baris:
     dari pipeline real-master-data.
   - 'manual' (polsek): entitas resmi yang dipertahankan, diisi/dirawat manual.
   - 'seed' (placeholder seeder lama): dinonaktifkan oleh master-replace
-    (is_active=false / status='tidak aktif'), tetap tersimpan untuk rollback.
+    (is_active=false / status='tidak aktif'); dihapus permanen via
+    `public-data:master-purge` (purge terakhir: 280 kesehatan, 26 pasar,
+    235 poskamling, 152 tipkamtikmas, 170 sekolah).
   - NULL (baris dibuat via CRUD): TIDAK pernah dinonaktifkan otomatis.
 Dari hasil penggantian: 196 sekolah Dapodik aktif, 11 puskesmas Kemkes aktif,
 1 pasar SP2KP aktif (Pasar Rakyat Bungku Tengah, kec Bungku Tengah +
 koordinat), 9 polsek manual aktif. Posyandu/pustu/RS/poskamling/tipkamtikmas
-placeholder nonaktif dan menunggu input manual via CRUD di tiap dashboard.
+placeholder sudah dihapus dan menunggu input manual via CRUD di tiap dashboard.
 
 Model Public Data Intelligence Center:
   PublicDataSource : registri sumber data eksternal (key, name, category,
@@ -519,8 +526,11 @@ dijangkau, tanpa mengubah semantik dashboard:
     - Hanya sumber yang dapat dijangkau dari lingkungan yang dipakai;
       yankes.kemkes.go.id / data.kemkes.go.id / dapo.kemdikbud.go.id tidak
       resolve DNS, data.go.id mengembalikan 403. Entitas tanpa sumber publik
-      (posyandu/pustu/RS/poskamling/tipkamtikmas) sengaja DINONAKTIFKAN, bukan
-      dihapus, agar dashboard jujur menampilkan nol sampai diisi manual.
+      (posyandu/pustu/RS/poskamling/tipkamtikmas) sengaja DINONAKTIFKAN (oleh
+      master-replace), bukan dihapus, agar dashboard jujur menampilkan nol.
+      `public-data:master-purge` lalu menghapus permanen seluruh placeholder
+      ('seed') setelah dipastikan tidak dibutuhkan; baris CRUD (source NULL)
+      tidak pernah ikut terhapus.
     - Skor Command Center memakai denominator seluruh baris (termsuk nonaktif);
       setelah penggantian, sektor kesehatan/ketertiban turun secara jujur.
 
@@ -643,12 +653,15 @@ dijangkau, tanpa mengubah semantik dashboard:
     tests/Feature/PublicDataMasterReplaceCommandTest.php - impor puskesmas/
                                           pasar + nonaktifkan seed, polsek
                                           manual, row CRUD aman, file hilang
+    tests/Feature/PublicDataMasterPurgeCommandTest.php - hapus permanen baris
+                                          seed (force delete), row CRUD/real
+                                          aman, idempoten
     tests/Unit/MasterDataCaptureTest.php   - parse tabel Kemkes (HTML asli,
                                           fixture) & respons pasar SP2KP
     tests/Feature/PublicDataScraperTest.php     - scraper legacy
     tests/Feature/PublicDataGeocodeCommandTest.php - geocode record
     test yang lain: DataImport, DataScraper, DashboardRefresh
-    (341 test, 1457 assertion total)
+    (343 test, 1475 assertion total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest
@@ -742,6 +755,8 @@ Semua resource ber-SoftDeletes mendukung pemulihan data terhapus:
      php artisan public-data:master-capture && php artisan public-data:master-replace
      (Sekolah Dapodik: cd scripts/dapodik terlebih dahulu, jalankan node
      dapodik-capture.cjs, lalu php artisan public-data:dapodik-import --replace.)
+     Setelah itu (opsional): php artisan public-data:master-purge untuk
+     menghapus permanen seluruh placeholder dummy yang sudah dinonaktifkan.
  10. Jadwalkan scheduler di server (cron memanggil `php artisan schedule:run`)
      agar `public-data:sync` (03:00) dan `data:sync` (04:00) berjalan otomatis.
 
