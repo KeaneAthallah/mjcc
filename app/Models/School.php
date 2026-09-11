@@ -59,6 +59,7 @@ class School extends Model
         'toilet_percentage',
         'worship_room_percentage',
         'is_active',
+        'source',
     ];
 
     protected function casts(): array

@@ -20,6 +20,7 @@ class Tipkamtikmas extends Model
         'status',
         'latitude',
         'longitude',
+        'source',
     ];
 
     protected function casts(): array

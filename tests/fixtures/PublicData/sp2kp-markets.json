@@ -1,0 +1,17 @@
+{
+    "region_code": "7206",
+    "markets": [
+        {
+            "id": 606,
+            "kode": "7206001",
+            "nama": "Pasar Rakyat Bungku Tengah",
+            "alamat": "",
+            "kode_kecamatan": "7206051",
+            "kode_kelurahan": "7206051014",
+            "tipe": "Pasar Rakyat",
+            "latitude": -2.5674091,
+            "longitude": 121.8520499
+        }
+    ],
+    "captured_at": "2026-09-11T00:00:00+00:00"
+}

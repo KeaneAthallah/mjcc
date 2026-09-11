@@ -19,6 +19,7 @@ class Market extends Model
         'latitude',
         'longitude',
         'status',
+        'source',
     ];
 
     protected function casts(): array

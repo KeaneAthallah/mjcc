@@ -28,6 +28,10 @@ Selain dashboard, aplikasi ini menawarkan:
       eksternal (Satu Data Morowali, ATS, Dapodik, SP2KP, BPS, IRBI,
       Sitaba/Bencana Terkini, APBD) -> dashboard per sumber + peta choropleth
       Indeks Risiko Bencana; dijalankan terjadwal via command `public-data:sync`.
+  - REAL MASTER DATA : pengganti placeholder seeder dengan data nyata
+      per-entitas (sekolah via Dapodik, puskesmas via Kemkes SISDMK, pasar via
+      SP2KP) lewat `public-data:dapodik-import` dan `public-data:master-replace`;
+      placeholder tanpa sumber publik dinonaktifkan (bukan dihapus).
   - REST API `/api/v1`  : autentikasi Sanctum (login/register/verify email)
       untuk memakai semua data + alur SOS dari aplikasi mobile.
 
@@ -52,6 +56,9 @@ Selain dashboard, aplikasi ini menawarkan:
         PublicDataSyncCommand.php    -> sinkronisasi 8 sumber data publik
         PublicDataScrapeCommand.php  -> scrape legacy Satu Data Morowali
         PublicDataGeocodeCommand.php -> geocode record tanpa koordinat
+        PublicDataDapodikImportCommand.php      -> impor sekolah nyata dari snapshot Dapodik
+        PublicDataMasterCaptureCommand.php -> ambil snapshot puskesmas (Kemkes) & pasar (SP2KP)
+        PublicDataMasterReplaceCommand.php  -> impor snapshot & nonaktifkan data master dummy
         DataSyncCommand.php          -> sinkronisasi legacy (data master)
     Http/
       Controllers/      Semua controller
@@ -133,11 +140,18 @@ Selain dashboard, aplikasi ini menawarkan:
         SitabaAdapter.php             (bencana terkini PUPR -> DisasterEvent)
         ApbdAdapter.php               (TKDD Kemkeu -> ApbdRecord)
         SatuDataMorowaliAdapter.php   (legacy Satu Data Morowali)
+        DapodikSchoolService.php      (impor snapshot Dapodik -> tabel schools,
+                                        source 'dapodik', deaktivasi --replace)
+        MasterDataCapture.php         (Kemkes SISDMK puskesmas + SP2KP pasar ->
+                                        snapshot JSON; keduanya HTTP polos)
+        MasterDataImport.php          (impor snapshot -> master; tandai 'seed' &
+                                        nonaktifkan placeholder dummy)
   database/
     factories/          14 factory
-    migrations/         28 migrasi (termasuk sos_alerts, sos_responder_locations,
+    migrations/         30 migrasi (termasuk sos_alerts, sos_responder_locations,
                         notifications, kolom category/responder di sos_alerts,
-                        kolom responder_type di users)
+                        kolom responder_type di users, kolom `source` di
+                        schools & tabel master)
     seeders/            seeder data contoh (deterministik) + UserSeeder
   resources/
     css/app.css         Tailwind 4 + import CSS Leaflet/markercluster
@@ -183,6 +197,22 @@ Model utama dan relasinya (semua memakai SoftDeletes kecuali User/Subject):
   Market (Pasar)  : name, status, lat/long
   HealthFacility  : TYPE_PUSKESMAS/PUSTU/RS/POSYANDU; beds, doctors, nurses,
                     midwives, status, phone, deskripsi
+
+Catatan: koordinat lat/long tersimpan deterministik dari seeder (bukan acak
+per-render), sehingga peta konsisten antar halaman.
+
+Kolom `source` pada data master (schools, health_facilities, polseks,
+poskamlings, tipkamtikmas, markets) menandai asal tiap baris:
+  - 'dapodik' (sekolah), 'kemkes' (puskesmas), 'sp2kp' (pasar): data nyata
+    dari pipeline real-master-data.
+  - 'manual' (polsek): entitas resmi yang dipertahankan, diisi/dirawat manual.
+  - 'seed' (placeholder seeder lama): dinonaktifkan oleh master-replace
+    (is_active=false / status='tidak aktif'), tetap tersimpan untuk rollback.
+  - NULL (baris dibuat via CRUD): TIDAK pernah dinonaktifkan otomatis.
+Dari hasil penggantian: 196 sekolah Dapodik aktif, 11 puskesmas Kemkes aktif,
+1 pasar SP2KP aktif (Pasar Rakyat Bungku Tengah, kec Bungku Tengah +
+koordinat), 9 polsek manual aktif. Posyandu/pustu/RS/poskamling/tipkamtikmas
+placeholder nonaktif dan menunggu input manual via CRUD di tiap dashboard.
 
 Model Public Data Intelligence Center:
   PublicDataSource : registri sumber data eksternal (key, name, category,
@@ -441,6 +471,60 @@ command `php artisan public-data:sync` (terjadwal 03:00). Arsitektur:
       gunakan `--source=<key>` utk menyinkronkan satu sumber saja.
 
 --------------------------------------------------------------------------------
+7.2  REAL MASTER DATA (PENGGANTI DATA DUMMY SEEDER)
+--------------------------------------------------------------------------------
+Seeder lama mengisi tabel master (schools, kesehatan, ketertiban) dengan data
+sintetis sebagai placeholder. Pipeline berikut mengganti (atau mematikan)
+placeholder dengan data nyata per-entitas dari sumber resmi yang dapat
+dijangkau, tanpa mengubah semantik dashboard:
+
+  1. SEKOLAH  -> Dapodik (dapo.kemendikdasmen.go.id). Endpoint per-sekolah
+     ditolak WAF (SafeLine) oleh klien HTTP biasa, sehingga snapshot diambil
+     lewat browser asli (playwright-core + MS Edge, headless) oleh
+     `scripts/dapodik/dapodik-capture.cjs` -> morowali-schools.json.
+     Command `public-data:dapodik-import {file} {--replace}` memetakan baris
+     ke tabel schools (NPSN sebagai kunci pencocokan; fallback nama bila NPSN
+     kosong). Hanya SD/SMP yang diimpor; `--replace` menonaktifkan placeholder
+     SD/SMP aktif yang tidak ada di snapshot. Bawahnya, sumber resmi lain
+     (referensi.data.kemdikbud.go.id dkk) tidak resolve DNS di lingkungan ini.
+
+  2. PUSKESMAS -> Kemkes SISDMK (dreams.kemkes.go.id), halaman
+     /user/kekosongan_dev/SKMPKM/prov/72/kab/7206 (HTTP polos, tanpa WAF):
+     tabel per-puskesmas berisi nama, jenis (rawat inap/non), dan isi SDM
+     (Dokter/Dokter Gigi/Perawat/Bidan; angka "eksisting/target" -> ambil
+     eksisting). Map ke HealthFacility type=Puskesmas, doctors/nurses/midwives,
+     condition='baik', kecamatan_id NULL (sumber tak memuat kecamatan).
+
+  3. PASAR -> SP2KP `master/api/pasar` (kode_provinsi=72, kode_kab_kota=7206):
+     hanya 1 pasar nyata di Morowali (Pasar Rakyat Bungku Tengah, id 606)
+     lengkap dengan kode kecamatan (7206051 -> Bungku Tengah via kolom `code`)
+     dan koordinat lat/lon.
+
+  Alur eksekusi (dua langkah, mengikuti pola Dapodik agar scheduled run tidak
+  perlu koneksi hidup):
+    - `public-data:master-capture`  : tarik Kemkes + SP2KP -> snapshot JSON
+      (storage/app/data/morowali/kemkes-puskesmas.json & sp2kp-markets.json).
+    - `public-data:master-replace`  : baca snapshot -> impor puskesmas & pasar;
+      MENANDAI untuk pertama-kali baris lama source=NULL sebagai 'seed';
+      menonaktifkan semua baris 'seed' yang tersisa (health, market,
+      poskamling, tipkamtikmas); polsek ditandai 'manual' dan TETAP aktif.
+      Baris source=NULL yang dibuat sesudahnya (via CRUD) tidak pernah disentuh.
+
+  Semua URL bisa override via config/public_data.php (blok `kemkes`, `master`)
+  / .env (PUBLIC_DATA_KEMKES_*, dst). Harga SP2KP tetap mengalir terpisah ke
+  tabel commodity_prices (Sp2kpAdapter); tabel markets hanya memuat entitas
+  pasar (kini 1, nyata).
+
+  Catatan lapangan:
+    - Hanya sumber yang dapat dijangkau dari lingkungan yang dipakai;
+      yankes.kemkes.go.id / data.kemkes.go.id / dapo.kemdikbud.go.id tidak
+      resolve DNS, data.go.id mengembalikan 403. Entitas tanpa sumber publik
+      (posyandu/pustu/RS/poskamling/tipkamtikmas) sengaja DINONAKTIFKAN, bukan
+      dihapus, agar dashboard jujur menampilkan nol sampai diisi manual.
+    - Skor Command Center memakai denominator seluruh baris (termsuk nonaktif);
+      setelah penggantian, sektor kesehatan/ketertiban turun secara jujur.
+
+--------------------------------------------------------------------------------
 8.  FRONTEND
 --------------------------------------------------------------------------------
   resources/css/app.css
@@ -551,10 +635,20 @@ command `php artisan public-data:sync` (terjadwal 03:00). Arsitektur:
     tests/Feature/PublicDataApiTest.php         - /api/v1/public-data (tanpa token)
     tests/Feature/PublicDataSyncCommandTest.php - sinkronisasi 8 sumber via
                                           Http::fake (stub HTML/JSON per sumber)
+    tests/Feature/PublicDataDapodikImportCommandTest.php - impor snapshot
+                                          Dapodik (mapping, idempoten, --replace,
+                                          duplikat nama beda NPSN, file invalid)
+    tests/Feature/PublicDataMasterCaptureTest.php - capture Kemkes & SP2KP
+                                          via Http::fake -> snapshot JSON
+    tests/Feature/PublicDataMasterReplaceCommandTest.php - impor puskesmas/
+                                          pasar + nonaktifkan seed, polsek
+                                          manual, row CRUD aman, file hilang
+    tests/Unit/MasterDataCaptureTest.php   - parse tabel Kemkes (HTML asli,
+                                          fixture) & respons pasar SP2KP
     tests/Feature/PublicDataScraperTest.php     - scraper legacy
     tests/Feature/PublicDataGeocodeCommandTest.php - geocode record
     test yang lain: DataImport, DataScraper, DashboardRefresh
-    (323 test, 1355 assertions total)
+    (341 test, 1457 assertion total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest
@@ -644,6 +738,10 @@ Semua resource ber-SoftDeletes mendukung pemulihan data terhapus:
      dewi@, rudi@ (viewer), nur@ (admin) - semuanya / password.
   9. (Opsional) Sinkronkan data publik: php artisan public-data:sync
      (atau per-sumber: php artisan public-data:sync --source=irbi).
+  9b. Ganti data dummy master dengan data nyata (opsional, disarankan):
+     php artisan public-data:master-capture && php artisan public-data:master-replace
+     (Sekolah Dapodik: cd scripts/dapodik terlebih dahulu, jalankan node
+     dapodik-capture.cjs, lalu php artisan public-data:dapodik-import --replace.)
  10. Jadwalkan scheduler di server (cron memanggil `php artisan schedule:run`)
      agar `public-data:sync` (03:00) dan `data:sync` (04:00) berjalan otomatis.
 

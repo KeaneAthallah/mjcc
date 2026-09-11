@@ -1,0 +1,41 @@
+{
+    "data": [
+        {
+            "id": 606,
+            "created_at": "2024-01-17T05:44:57.271088Z",
+            "updated_at": "2026-01-28T02:12:05.254433Z",
+            "kode": 7206001,
+            "nama": "Pasar Rakyat Bungku Tengah",
+            "deskripsi": "Dinas Perdagangan dan Perindustrian Kabupaten Morowali",
+            "alamat": "",
+            "kode_provinsi": "72",
+            "kode_kab_kota": "7206",
+            "kode_kecamatan": "7206051",
+            "kode_kelurahan": "7206051014",
+            "tipe_pasar_id": 8,
+            "tipe_pasar": {
+                "id": 8,
+                "nama": "Pasar Rakyat",
+                "deskripsi": "Pasar Rakyat",
+                "is_active": true,
+                "has_bapok": true,
+                "has_banting": false,
+                "is_induk": false
+            },
+            "sumber_data_id": 1,
+            "lat": -2.5674091,
+            "lon": 121.8520499,
+            "is_active": true,
+            "is_nasional": true,
+            "is_ihk2024": true,
+            "status": ""
+        }
+    ],
+    "totalCount": 1,
+    "summary": null,
+    "meta": {
+        "last_page": 1,
+        "page": 1,
+        "total": 1
+    }
+}

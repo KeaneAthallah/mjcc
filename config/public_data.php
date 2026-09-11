@@ -113,6 +113,50 @@ return [
         'url' => env('PUBLIC_DATA_DAPODIK_URL', 'https://dapo.kemendikdasmen.go.id'),
         'region_code' => env('PUBLIC_DATA_DAPODIK_REGION_CODE', '180700'),
         'region_name' => 'Kabupaten Morowali',
+        /*
+         * Per-school snapshot written by scripts/dapodik/dapodik-capture.cjs.
+         * The portal WAF rejects plain HTTP clients for the school endpoints,
+         * so real rows are captured through a real browser and imported from
+         * that JSON file by the `public-data:dapodik-import` command.
+         */
+        'snapshot' => storage_path('app/data/dapodik/morowali-schools.json'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Kemkes SISDMK (Puskesmas) Source
+    |--------------------------------------------------------------------------
+    |
+    | SATUSEHAT Perencanaan Tenaga Medis dan Tenaga Kesehatan publishes a
+    | per-puskesmas table (nama, jenis, dan isi SDM) that is reachable via plain
+    | HTTP. Used to import real Puskesmas rows into the health master table.
+    |
+    */
+    'kemkes' => [
+        'provider_url' => env('PUBLIC_DATA_KEMKES_URL', 'https://dreams.kemkes.go.id/user/kekosongan_dev/SKMPKM/prov/{province}/kab/{region}'),
+        'province_code' => env('PUBLIC_DATA_KEMKES_PROVINCE', '72'),
+        'region_code' => env('PUBLIC_DATA_KEMKES_REGION_CODE', '7206'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Master Entity Replacement
+    |--------------------------------------------------------------------------
+    |
+    | Real per-entity master data captured from reachable official sources and
+    | imported by `public-data:master-replace`. The `--capture` option refreshes
+    | these snapshots from the network first; otherwise the command imports the
+    | saved snapshot files so a scheduled run never needs live connectivity.
+    |
+    */
+    'master' => [
+        'dir' => storage_path('app/data/morowali'),
+        'snapshots' => [
+            'puskesmas' => storage_path('app/data/morowali/kemkes-puskesmas.json'),
+            'markets' => storage_path('app/data/morowali/sp2kp-markets.json'),
+        ],
+        'source_health' => 'kemkes',
+        'source_market' => 'sp2kp',
     ],
 
     /*

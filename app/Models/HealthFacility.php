@@ -35,6 +35,7 @@ class HealthFacility extends Model
         'status',
         'phone',
         'description',
+        'source',
     ];
 
     protected function casts(): array

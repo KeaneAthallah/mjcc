@@ -1,0 +1,48 @@
+{
+    "region_code": "7206",
+    "puskesmas": [
+        {
+            "name": "ULUNAMBU",
+            "jenis": "Sangat Terpencil Rawat Inap",
+            "blu": "Non BLUD",
+            "dokter": 1,
+            "dokter_gigi": 0,
+            "perawat": 14,
+            "bidan": 30,
+            "promkes": 7,
+            "sanling": 2,
+            "gizi": 2,
+            "farmasi": 1,
+            "atlm": 3
+        },
+        {
+            "name": "BAHODOPI",
+            "jenis": "Tidak Terpencil Rawat Inap",
+            "blu": "Non BLUD",
+            "dokter": 4,
+            "dokter_gigi": 2,
+            "perawat": 35,
+            "bidan": 51,
+            "promkes": 3,
+            "sanling": 4,
+            "gizi": 2,
+            "farmasi": 5,
+            "atlm": 3
+        },
+        {
+            "name": "LA'ANTULA JAYA",
+            "jenis": "Tidak Terpencil Rawat Inap",
+            "blu": "Non BLUD",
+            "dokter": 3,
+            "dokter_gigi": 1,
+            "perawat": 29,
+            "bidan": 37,
+            "promkes": 14,
+            "sanling": 2,
+            "gizi": 3,
+            "farmasi": 8,
+            "atlm": 4
+        }
+    ],
+    "captured_at": "2026-09-11T00:00:00+00:00"
+}

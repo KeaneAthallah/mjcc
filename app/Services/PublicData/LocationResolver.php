@@ -48,6 +48,7 @@ class LocationResolver
         'witaponda' => 'Wita Ponda',
         'bumiraya' => 'Bumi Raya',
         'sombori kepualauan' => 'Sombori Kepulauan',
+        'sambori kepulauan' => 'Sombori Kepulauan',
         'kep sambori' => 'Sombori Kepulauan',
         'kep.. sambori' => 'Sombori Kepulauan',
         'morowali' => 'Kabupaten Morowali',

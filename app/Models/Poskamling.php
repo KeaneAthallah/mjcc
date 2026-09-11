@@ -20,6 +20,7 @@ class Poskamling extends Model
         'longitude',
         'status',
         'is_active',
+        'source',
     ];
 
     protected function casts(): array

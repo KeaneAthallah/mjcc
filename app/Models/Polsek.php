@@ -20,6 +20,7 @@ class Polsek extends Model
         'personnel_count',
         'poskamling_count',
         'status',
+        'source',
     ];
 
     protected function casts(): array
