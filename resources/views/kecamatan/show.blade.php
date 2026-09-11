@@ -88,13 +88,24 @@
             <x-alert-summary-badges :counts="$kecOpenAlertCounts" :link="route('alerts.index', ['kecamatan' => $row['kecamatan']['id']])"/>
         </x-slot:actions>
         @if ($row['open_alerts']->isNotEmpty())
+            @php
+                $kecVisibleAlerts = $row['open_alerts']->take(6);
+            @endphp
             <div class="divide-y divide-gray-50">
-                @foreach ($row['open_alerts'] as $alert)
+                @foreach ($kecVisibleAlerts as $alert)
                     <div class="p-3">
                         <x-command-alert :alert="$alert" :transition="true"/>
                     </div>
                 @endforeach
             </div>
+            @if ($row['open_alerts']->count() > count($kecVisibleAlerts))
+                <div class="px-5 py-3 border-t border-gray-100 text-right">
+                    <a href="{{ route('alerts.index', ['kecamatan' => $row['kecamatan']['id']]) }}"
+                       class="text-[12px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline">
+                        Lihat semua ({{ $row['open_alerts']->count() }}) →
+                    </a>
+                </div>
+            @endif
         @else
             <div class="p-5 text-center">
                 <div class="text-4xl mb-2">✅</div>

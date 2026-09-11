@@ -61,3 +61,18 @@ it('renders the per-sector dashboard with the alerts section', function () {
         ->assertOk()
         ->assertSee('Perlu Perhatian');
 });
+
+it('limits the per-sector alerts section and offers to see the rest', function () {
+    $admin = User::factory()->admin()->create();
+    School::factory()->count(10)->create(['condition' => 'rusak berat']);
+
+    $response = $this->actingAs($admin)->get(route('education.dashboard'));
+
+    $response->assertOk()
+        ->assertSee('Perlu Perhatian')
+        ->assertSee('10 isu')
+        ->assertSee(route('alerts.index', ['sector' => 'pendidikan']))
+        ->assertSee('Lihat semua (10)');
+
+    expect(substr_count($response->getContent(), 'rounded-xl bg-white border border-gray-100 p-3'))->toBe(6);
+});

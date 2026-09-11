@@ -1,6 +1,9 @@
 @php
     $sectorAlerts = collect($alerts ?? [])->values();
     $count = $sectorAlerts->count();
+    $limit = 6;
+    $visibleAlerts = $sectorAlerts->take($limit);
+    $sectorKey = $sectorAlerts->first()['sector_key'] ?? null;
 @endphp
 <div class="rounded-2xl border {{ $count > 0 ? 'border-amber-200 bg-amber-50/50' : 'border-emerald-200 bg-emerald-50/50' }} p-5 space-y-3">
     <div class="flex items-center justify-between">
@@ -11,7 +14,7 @@
     </div>
     @if ($count > 0)
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            @foreach ($sectorAlerts as $alert)
+            @foreach ($visibleAlerts as $alert)
                 <div class="flex items-start gap-3 rounded-xl bg-white border border-gray-100 p-3">
                     <span class="mt-0.5 text-base">{{ $alert['severity'] === 'critical' ? '🔴' : '🟡' }}</span>
                     <div>
@@ -24,6 +27,14 @@
                 </div>
             @endforeach
         </div>
+        @if ($count > count($visibleAlerts))
+            <div class="pt-1 text-right">
+                <a href="{{ route('alerts.index', ['sector' => $sectorKey]) }}"
+                   class="inline-flex items-center gap-1 text-[12px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline">
+                    Lihat semua ({{ $count }}) →
+                </a>
+            </div>
+        @endif
     @else
         <p class="text-[13px] text-gray-500">Tidak ada isu yang memerlukan perhatian pada sektor ini.</p>
     @endif
