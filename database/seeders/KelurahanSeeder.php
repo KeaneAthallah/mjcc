@@ -45,12 +45,6 @@ class KelurahanSeeder extends Seeder
             'Bungku Selatan' => ['Bungku', 'Kaleroang', 'Lembo', 'One Ete', 'Po`o', 'Sungkur', 'Tamboro', 'Tandaoleo', 'Ululere', 'Umatara', 'Anua', 'Bungku Tengah'],
             'Bungku Timur' => ['Bahoea', 'Beroa', 'Kajulangko', 'Lambelu', 'Lantula Jaya', 'Mahoro', 'Molonggota', 'Noha', 'Sangia', 'Waetuwo'],
             'Bungku Pesisir' => ['Bahomoahi', 'Basing', 'Bunggur', 'Lanto', 'Maleo', 'Nane', 'Pangkea', 'Sarombu'],
-            'Lembo' => ['Korowou', 'Lembo', 'Lemobaru', 'Makodo', 'Mina Una', 'Ronting', 'Suka Damai'],
-            'Lembo Raya' => ['Petobang', 'Skyore', 'Larate', 'Lembobelala', 'Manoorung', 'Po`aro'],
-            'Mori Utara' => ['Era', 'Karaupa', 'Lembontonara', 'Lembotahi', 'Mayumba', 'Meko', 'Peleru', 'Ronta'],
-            'Mori Selatan' => ['Bera', 'Bombongan', 'Ganda-ganda', 'Lamba', 'Lengko', 'Mandesan', 'Tiu'],
-            'Petasia' => ['Bantaya', 'Beteleme', 'Beteleme Timur', 'Ganda-ganda', 'Kasintuvu', 'Matarape', 'Pajeko', 'Tavailobo'],
-            'Petasia Timur' => ['Bahomotefe', 'Bungku Baru', 'Keranda', 'Molono'],
         ];
 
         $list = $names[$kecamatan] ?? [];
@@ -65,12 +59,6 @@ class KelurahanSeeder extends Seeder
             'Bungku Selatan' => 37000,
             'Bungku Timur' => 26000,
             'Bungku Pesisir' => 22000,
-            'Lembo' => 18000,
-            'Lembo Raya' => 15000,
-            'Mori Utara' => 21000,
-            'Mori Selatan' => 17000,
-            'Petasia' => 30000,
-            'Petasia Timur' => 19000,
         ];
 
         $total = $totals[$kecamatan] ?? 20000;

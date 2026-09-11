@@ -15,6 +15,9 @@ beforeEach(function () {
     config()->set('public_data.master.snapshots.markets', $this->fixtures.'/sp2kp-markets.json');
 
     $this->bungkuTengah = Kecamatan::factory()->create(['name' => 'Bungku Tengah', 'code' => '72.06.05']);
+    $this->bahodopi = Kecamatan::factory()->create(['name' => 'Bahodopi', 'code' => '72.06.10']);
+    $this->witaPonda = Kecamatan::factory()->create(['name' => 'Wita Ponda']);
+    $this->menuiKepulauan = Kecamatan::factory()->create(['name' => 'Menui Kepulauan']);
 
     // Placeholder rows as they exist right after seeder (source null).
     $this->seedHealth = HealthFacility::factory()->create([
@@ -107,8 +110,17 @@ it('fails when a snapshot file is missing', function () {
         ->assertExitCode(1);
 });
 
-it('assigns no kecamatan to puskesmas without region data', function () {
+it('assigns curated kecamatan and address to puskesmas without region data in the snapshot', function () {
     $this->artisan(PublicDataMasterReplaceCommand::class)->assertExitCode(0);
 
-    expect(HealthFacility::where('source', 'kemkes')->whereNull('kecamatan_id')->count())->toBe(3);
+    $bahodopi = HealthFacility::where('source', 'kemkes')->where('name', 'Puskesmas Bahodopi')->first();
+    expect($bahodopi->kecamatan_id)->toBe($this->bahodopi->id)
+        ->and($bahodopi->address)->toBe('Ds. Keurea, Kec. Bahodopi');
+
+    $ulunambo = HealthFacility::where('source', 'kemkes')->where('name', 'Puskesmas Ulunambo')->first();
+    expect($ulunambo->kecamatan_id)->toBe($this->menuiKepulauan->id)
+        ->and($ulunambo->address)->toBe('Kel. Ulunambo, Kec. Menui Kepulauan');
+
+    $laantula = HealthFacility::where('source', 'kemkes')->where('name', "Puskesmas La'antula Jaya")->first();
+    expect($laantula->kecamatan_id)->toBe($this->witaPonda->id);
 });

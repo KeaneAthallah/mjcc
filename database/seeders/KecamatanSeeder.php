@@ -12,7 +12,13 @@ class KecamatanSeeder extends Seeder
      */
     public function run(): void
     {
+        $allowed = array_map('mb_strtolower', config('public_data.morowali.kecamatan', []));
+
         foreach (MorowaliData::kecamatan() as $name => $data) {
+            if (! in_array(mb_strtolower($name), $allowed, true)) {
+                continue;
+            }
+
             Kecamatan::updateOrCreate(
                 ['name' => $name],
                 [
@@ -33,12 +39,6 @@ class KecamatanSeeder extends Seeder
             'Bungku Selatan' => '72.06.06',
             'Bungku Timur' => '72.06.18',
             'Bungku Pesisir' => '72.06.15',
-            'Lembo' => '72.06.04',
-            'Lembo Raya' => '72.06.19',
-            'Mori Utara' => '72.06.09',
-            'Mori Selatan' => '72.06.08',
-            'Petasia' => '72.06.01',
-            'Petasia Timur' => '72.06.20',
         ];
 
         return $map[$name] ?? '72.06.00';

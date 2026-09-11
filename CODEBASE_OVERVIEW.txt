@@ -62,6 +62,7 @@ Selain dashboard, aplikasi ini menawarkan:
         PublicDataMasterCaptureCommand.php -> ambil snapshot puskesmas (Kemkes) & pasar (SP2KP)
         PublicDataMasterReplaceCommand.php  -> impor snapshot & nonaktifkan data master dummy
         PublicDataMasterPurgeCommand.php    -> hapus permanen seluruh data master dummy
+        PublicDataMasterRegionCleanupCommand.php -> hapus data wilayah di luar Kab. Morowali
         DataSyncCommand.php          -> sinkronisasi legacy (data master)
     Http/
       Controllers/      Semua controller
@@ -152,6 +153,8 @@ Selain dashboard, aplikasi ini menawarkan:
                                         nonaktifkan placeholder dummy)
         MasterDataPurge.php           (hapus permanen baris 'seed' + sekolah
                                         placeholder nonaktif)
+        MasterDataRegionCleanup.php   (beri batas wilayah: hapus kecamatan/
+                                        kelurahan/polsek di luar Kab. Morowali)
   database/
     factories/          14 factory
     migrations/         30 migrasi (termasuk sos_alerts, sos_responder_locations,
@@ -218,10 +221,18 @@ poskamlings, tipkamtikmas, markets) menandai asal tiap baris:
     235 poskamling, 152 tipkamtikmas, 170 sekolah).
   - NULL (baris dibuat via CRUD): TIDAK pernah dinonaktifkan otomatis.
 Dari hasil penggantian: 216 sekolah Dapodik aktif (155 SD, 41 SMP, 9 SMA,
-10 SMK, 1 SLB), 11 puskesmas Kemkes aktif,
+10 SMK, 1 SLB), 11 puskesmas Kemkes aktif (kecamatan + alamat diisi dari
+pemetaan terkurasi, lihat bagian 7.2),
 1 pasar SP2KP aktif (Pasar Rakyat Bungku Tengah, kec Bungku Tengah +
-koordinat), 9 polsek manual aktif. Posyandu/pustu/RS/poskamling/tipkamtikmas
+koordinat), 4 polsek manual aktif. Posyandu/pustu/RS/poskamling/tipkamtikmas
 placeholder sudah dihapus dan menunggu input manual via CRUD di tiap dashboard.
+
+Wilayah kerja hanya Kabupaten Morowali (10 kecamatan: Bahodopi, Bumi Raya,
+Bungku Barat, Pesisir, Selatan, Tengah, Timur, Menui Kepulauan, Sombori
+Kepulauan, Wita Ponda; 46 kelurahan). Data Morowali Utara (Lembo, Lembo Raya,
+Mori Utara/Selatan, Petasia, Petasia Timur) dibersihkan permanen dari DB via
+`public-data:master-region-cleanup`, dan impor/pipeline menolak kecamatan
+di luar daftar config `public_data.morowali.kecamatan`.
 
 Model Public Data Intelligence Center:
   PublicDataSource : registri sumber data eksternal (key, name, category,
@@ -504,7 +515,14 @@ dijangkau, tanpa mengubah semantik dashboard:
      tabel per-puskesmas berisi nama, jenis (rawat inap/non), dan isi SDM
      (Dokter/Dokter Gigi/Perawat/Bidan; angka "eksisting/target" -> ambil
      eksisting). Map ke HealthFacility type=Puskesmas, doctors/nurses/midwives,
-     condition='baik', kecamatan_id NULL (sumber tak memuat kecamatan).
+     condition='baik'. Kecamatan & alamat TIDAK ada di snapshot Kemkes, sehingga
+     diisi dari pemetaan terkurasi per-puskesmas di MasterDataImport
+     (PUSKESMAS_LOCATIONS), diverifikasi dari sumber resmi (morowalikab.go.id,
+     BPJS Faskes, berita Dinkes) sejak 2026-09:
+     Ulunambo->Menui Kepulauan, Kaleroang->Bungku Selatan, Lafeu->Bungku
+     Pesisir, Bahodopi->Bahodopi, Bahomotefe->Bungku Tengah, Bungku->Bungku
+     Tengah, Wosu->Bungku Barat, Bahonsuai->Bumi Raya, La'antula Jaya->Wita
+     Ponda, Tanjung Harapan->Menui Kepulauan, Fonuasingko->Bungku Tengah.
 
   3. PASAR -> SP2KP `master/api/pasar` (kode_provinsi=72, kode_kab_kota=7206):
      hanya 1 pasar nyata di Morowali (Pasar Rakyat Bungku Tengah, id 606)

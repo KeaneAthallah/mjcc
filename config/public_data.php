@@ -161,6 +161,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Wilayah Kerja
+    |--------------------------------------------------------------------------
+    |
+    | Command Center hanya mengelola Kabupaten Morowali. Kecamatan di luar
+    | daftar ini (misalnya kecamatan Morowali Utara) dianggap di luar jangkauan,
+    | tidak diimpor, dan dibersihkan dari tabel master.
+    |
+    */
+    'morowali' => [
+        'kecamatan' => [
+            'Bahodopi',
+            'Bumi Raya',
+            'Bungku Barat',
+            'Bungku Pesisir',
+            'Bungku Selatan',
+            'Bungku Tengah',
+            'Bungku Timur',
+            'Menui Kepulauan',
+            'Sombori Kepulauan',
+            'Wita Ponda',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | SP2KP (Pasar & Kebutuhan Pokok) Source
     |--------------------------------------------------------------------------
     */

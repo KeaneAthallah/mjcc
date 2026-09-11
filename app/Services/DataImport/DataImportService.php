@@ -83,7 +83,7 @@ class DataImportService
                 foreach ($group as $record) {
                     $resolved = $this->resolver->resolve((string) $record->location);
 
-                    if ($resolved === null || ! KecamatanImporter::isDistrict($resolved['name'])) {
+                    if ($resolved === null || ! KecamatanImporter::isDistrict($resolved['name']) || ! KecamatanImporter::withinMorowali($resolved['name'])) {
                         continue;
                     }
 

@@ -122,7 +122,7 @@ abstract class EntityImporter
 
             $resolved = $this->resolveKecamatan($row, $rawName);
 
-            if ($resolved !== null && KecamatanImporter::isDistrict($resolved['name'])) {
+            if ($resolved !== null && KecamatanImporter::isDistrict($resolved['name']) && KecamatanImporter::withinMorowali($resolved['name'])) {
                 $kecamatan[$resolved['name']] = $resolved;
             }
         }

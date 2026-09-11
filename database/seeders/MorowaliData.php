@@ -43,42 +43,6 @@ final class MorowaliData
                 'ketertiban' => ['kelurahan' => 8, 'polsek' => 1, 'tipkamtikmas' => 14, 'poskamling' => 22, 'pasar' => 2],
                 'kesehatan' => ['puskesmas' => 1, 'pustu' => 4, 'rs' => 0, 'posyandu' => 20, 'dokter' => 4, 'perawat' => 22, 'bidan' => 8, 'bed' => 60],
             ],
-            'Lembo' => [
-                'latitude' => -3.15, 'longitude' => 121.55,
-                'pendidikan' => ['sd' => 10, 'smp' => 3, 'siswaL' => 1400, 'siswaP' => 1340, 'guru' => 180, 'kelas' => 68, 'tampung' => 1900, 'perpus' => 45, 'labIPA' => 25, 'labKom' => 20],
-                'ketertiban' => ['kelurahan' => 7, 'polsek' => 1, 'tipkamtikmas' => 12, 'poskamling' => 18, 'pasar' => 2],
-                'kesehatan' => ['puskesmas' => 1, 'pustu' => 4, 'rs' => 0, 'posyandu' => 18, 'dokter' => 3, 'perawat' => 18, 'bidan' => 8, 'bed' => 50],
-            ],
-            'Lembo Raya' => [
-                'latitude' => -3.05, 'longitude' => 121.60,
-                'pendidikan' => ['sd' => 8, 'smp' => 3, 'siswaL' => 1200, 'siswaP' => 1140, 'guru' => 150, 'kelas' => 56, 'tampung' => 1600, 'perpus' => 38, 'labIPA' => 20, 'labKom' => 18],
-                'ketertiban' => ['kelurahan' => 6, 'polsek' => 0, 'tipkamtikmas' => 10, 'poskamling' => 15, 'pasar' => 2],
-                'kesehatan' => ['puskesmas' => 1, 'pustu' => 3, 'rs' => 0, 'posyandu' => 16, 'dokter' => 2, 'perawat' => 14, 'bidan' => 6, 'bed' => 40],
-            ],
-            'Mori Utara' => [
-                'latitude' => -2.90, 'longitude' => 121.70,
-                'pendidikan' => ['sd' => 12, 'smp' => 4, 'siswaL' => 1680, 'siswaP' => 1600, 'guru' => 200, 'kelas' => 78, 'tampung' => 2100, 'perpus' => 50, 'labIPA' => 28, 'labKom' => 22],
-                'ketertiban' => ['kelurahan' => 8, 'polsek' => 1, 'tipkamtikmas' => 14, 'poskamling' => 20, 'pasar' => 2],
-                'kesehatan' => ['puskesmas' => 1, 'pustu' => 4, 'rs' => 1, 'posyandu' => 20, 'dokter' => 4, 'perawat' => 20, 'bidan' => 8, 'bed' => 100],
-            ],
-            'Mori Selatan' => [
-                'latitude' => -3.10, 'longitude' => 121.80,
-                'pendidikan' => ['sd' => 10, 'smp' => 3, 'siswaL' => 1360, 'siswaP' => 1300, 'guru' => 165, 'kelas' => 62, 'tampung' => 1800, 'perpus' => 42, 'labIPA' => 22, 'labKom' => 18],
-                'ketertiban' => ['kelurahan' => 7, 'polsek' => 1, 'tipkamtikmas' => 10, 'poskamling' => 15, 'pasar' => 2],
-                'kesehatan' => ['puskesmas' => 1, 'pustu' => 3, 'rs' => 0, 'posyandu' => 16, 'dokter' => 3, 'perawat' => 16, 'bidan' => 7, 'bed' => 45],
-            ],
-            'Petasia' => [
-                'latitude' => -3.25, 'longitude' => 121.90,
-                'pendidikan' => ['sd' => 14, 'smp' => 5, 'siswaL' => 2400, 'siswaP' => 2280, 'guru' => 280, 'kelas' => 108, 'tampung' => 3000, 'perpus' => 68, 'labIPA' => 42, 'labKom' => 35],
-                'ketertiban' => ['kelurahan' => 8, 'polsek' => 1, 'tipkamtikmas' => 16, 'poskamling' => 26, 'pasar' => 3],
-                'kesehatan' => ['puskesmas' => 2, 'pustu' => 5, 'rs' => 1, 'posyandu' => 22, 'dokter' => 8, 'perawat' => 32, 'bidan' => 14, 'bed' => 150],
-            ],
-            'Petasia Timur' => [
-                'latitude' => -3.20, 'longitude' => 122.10,
-                'pendidikan' => ['sd' => 8, 'smp' => 2, 'siswaL' => 1500, 'siswaP' => 1470, 'guru' => 180, 'kelas' => 64, 'tampung' => 1800, 'perpus' => 38, 'labIPA' => 20, 'labKom' => 15],
-                'ketertiban' => ['kelurahan' => 4, 'polsek' => 1, 'tipkamtikmas' => 8, 'poskamling' => 14, 'pasar' => 2],
-                'kesehatan' => ['puskesmas' => 1, 'pustu' => 4, 'rs' => 0, 'posyandu' => 14, 'dokter' => 5, 'perawat' => 22, 'bidan' => 9, 'bed' => 55],
-            ],
         ];
     }
 
@@ -94,11 +58,6 @@ final class MorowaliData
             ['name' => 'Polsek Bungku Selatan', 'kecamatan' => 'Bungku Selatan', 'personnel' => 32, 'poskamling' => 35],
             ['name' => 'Polsek Bungku Timur', 'kecamatan' => 'Bungku Timur', 'personnel' => 28, 'poskamling' => 28],
             ['name' => 'Polsek Bungku Pesisir', 'kecamatan' => 'Bungku Pesisir', 'personnel' => 25, 'poskamling' => 22],
-            ['name' => 'Polsek Lembo', 'kecamatan' => 'Lembo', 'personnel' => 22, 'poskamling' => 18],
-            ['name' => 'Polsek Mori Utara', 'kecamatan' => 'Mori Utara', 'personnel' => 24, 'poskamling' => 20],
-            ['name' => 'Polsek Mori Selatan', 'kecamatan' => 'Mori Selatan', 'personnel' => 20, 'poskamling' => 15],
-            ['name' => 'Polsek Petasia', 'kecamatan' => 'Petasia', 'personnel' => 30, 'poskamling' => 26],
-            ['name' => 'Polsek Petasia Timur', 'kecamatan' => 'Petasia Timur', 'personnel' => 18, 'poskamling' => 14],
         ];
     }
 }

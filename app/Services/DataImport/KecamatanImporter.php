@@ -25,7 +25,7 @@ class KecamatanImporter
         foreach ($locations as $location) {
             $name = trim((string) ($location['name'] ?? ''));
 
-            if ($name === '' || ! self::isDistrict($name)) {
+            if ($name === '' || ! self::isDistrict($name) || ! self::withinMorowali($name)) {
                 continue;
             }
 
@@ -88,5 +88,16 @@ class KecamatanImporter
     public static function isDistrict(string $name): bool
     {
         return mb_strtolower(trim($name)) !== 'kabupaten morowali';
+    }
+
+    /**
+     * Only kecamatan within Kabupaten Morowali belong in the master table.
+     * Places from neighbouring regencies (e.g. Morowali Utara) are skipped.
+     */
+    public static function withinMorowali(string $name): bool
+    {
+        $allowed = array_map('mb_strtolower', config('public_data.morowali.kecamatan', []));
+
+        return in_array(mb_strtolower(trim($name)), $allowed, true);
     }
 }

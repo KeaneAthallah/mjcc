@@ -30,6 +30,27 @@ class MasterDataImport
     public const SOURCE_MANUAL = 'manual';
 
     /**
+     * Curated puskesmas attributes the Kemkes SISDMK snapshot does not carry.
+     * The kecamatan and address for each puskesmas were verified from official
+     * sources (morowalikab.go.id, BPJS Faskes) and cross-checked references.
+     *
+     * @var array<string, array{0: string, 1: string|null}>
+     */
+    private const PUSKESMAS_LOCATIONS = [
+        'Puskesmas Bahodopi' => ['Bahodopi', 'Ds. Keurea, Kec. Bahodopi'],
+        'Puskesmas Bahonsuai' => ['Bumi Raya', 'Ds. Parilangke, Kec. Bumi Raya'],
+        'Puskesmas Bahomotefe' => ['Bungku Tengah', 'Ds. Bahomatefe, Kec. Bungku Tengah'],
+        'Puskesmas Bungku' => ['Bungku Tengah', 'Kel. Matano, Kec. Bungku Tengah'],
+        'Puskesmas Fonuasingko' => ['Bungku Tengah', 'Ds. Bahomohoni, Kec. Bungku Tengah'],
+        'Puskesmas Kaleroang' => ['Bungku Selatan', 'Ds. Kaleroang, Kec. Bungku Selatan'],
+        'Puskesmas Lafeu' => ['Bungku Pesisir', 'Desa Lafeu, Kec. Bungku Pesisir'],
+        "Puskesmas La'antula Jaya" => ['Wita Ponda', 'Ds. Lantula Jaya, Kec. Wita Ponda'],
+        'Puskesmas Tanjung Harapan' => ['Menui Kepulauan', null],
+        'Puskesmas Ulunambo' => ['Menui Kepulauan', 'Kel. Ulunambo, Kec. Menui Kepulauan'],
+        'Puskesmas Wosu' => ['Bungku Barat', 'Ds. Wosu, Kec. Bungku Barat'],
+    ];
+
+    /**
      * Import both snapshots and retire seeded placeholders.
      *
      * @return array<string, mixed>
@@ -193,11 +214,13 @@ class MasterDataImport
      */
     private function puskesmasAttributes(array $row, string $name): array
     {
+        [$kecamatanName, $address] = $this->puskesmasLocation($name);
+
         return [
             'name' => $name,
             'facility_type' => HealthFacility::TYPE_PUSKESMAS,
-            'kecamatan_id' => null,
-            'address' => null,
+            'kecamatan_id' => $this->resolveKecamatanByName($kecamatanName),
+            'address' => $address,
             'latitude' => null,
             'longitude' => null,
             'condition' => 'baik',
@@ -210,6 +233,23 @@ class MasterDataImport
             'description' => trim((string) ($row['jenis'] ?? '')) ?: null,
             'source' => self::SOURCE_HEALTH,
         ];
+    }
+
+    /**
+     * @return array{0: string, 1: string|null}
+     */
+    private function puskesmasLocation(string $name): array
+    {
+        return self::PUSKESMAS_LOCATIONS[$name] ?? ['', null];
+    }
+
+    private function resolveKecamatanByName(string $name): ?int
+    {
+        if ($name === '') {
+            return null;
+        }
+
+        return Kecamatan::whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->value('id');
     }
 
     /**
