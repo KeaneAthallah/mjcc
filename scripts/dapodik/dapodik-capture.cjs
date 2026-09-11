@@ -13,8 +13,9 @@
  *   2. lets the WAF challenge complete,
  *   3. reads the kecamatan roster for the configured kabupaten,
  *   4. fetches the school list per kecamatan,
- *   5. expands each SD/SMP school with /api/detail-sekolah?npsn= (coordinates,
- *      address, gender split, faculty, facilities), and
+ *   5. expands every jenjang school (SD/SMP/SMA/SMK/SLB) with
+ *      /api/detail-sekolah?npsn= (coordinates, address, gender split,
+ *      faculty, facilities), and
  *   6. writes one snapshot JSON consumed by `public-data:dapodik-import`.
  *
  * Requirements: Node.js >= 18, an MS Edge installation, and the playwright-core
@@ -34,7 +35,7 @@ const BASE = 'https://dapo.kemendikdasmen.go.id';
 const REGION_CODE = process.env.DAPODIK_REGION_CODE || '180700';
 const REGION_NAME = process.env.DAPODIK_REGION_NAME || 'Kabupaten Morowali';
 const SLOW_BY = Number(process.env.DAPODIK_PACE_MS || 500);
-const TYPES = ['SD', 'SMP'];
+const TYPES = ['SD', 'SMP', 'SMA', 'SMK', 'SLB'];
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const OUT_DIR = path.join(PROJECT_ROOT, 'storage', 'app', 'data', 'dapodik');

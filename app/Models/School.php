@@ -27,6 +27,8 @@ class School extends Model
 
     public const TYPE_MA = 'MA';
 
+    public const TYPE_SLB = 'SLB';
+
     public const SCHOOL_TYPES = [
         self::TYPE_SD,
         self::TYPE_SMP,
@@ -35,6 +37,7 @@ class School extends Model
         self::TYPE_MI,
         self::TYPE_MTS,
         self::TYPE_MA,
+        self::TYPE_SLB,
     ];
 
     protected $fillable = [

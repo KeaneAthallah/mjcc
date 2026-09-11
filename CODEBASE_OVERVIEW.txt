@@ -10,7 +10,7 @@
 Sebuah dashboard pemantauan (command center) untuk Kabupaten Morowali yang
 menggabungkan data 3 sektor ke dalam satu halaman kendali:
 
-  - PENDIDIKAN  (Sekolah SD/SMP/SMA/SMK/MI/MTS/MA, guru, siswa, sarana)
+  - PENDIDIKAN  (Sekolah SD/SMP/SMA/SMK/MI/MTS/MA/SLB, guru, siswa, sarana)
   - KETERTIBAN  (Polsek, Tipkamtikmas, Poskamling, Pasar, Kelurahan/Desa)
   - KESEHATAN   (Puskesmas, Pustu, Rumah Sakit, Posyandu, dokter/perawat/bidan)
 
@@ -144,7 +144,8 @@ Selain dashboard, aplikasi ini menawarkan:
         ApbdAdapter.php               (TKDD Kemkeu -> ApbdRecord)
         SatuDataMorowaliAdapter.php   (legacy Satu Data Morowali)
         DapodikSchoolService.php      (impor snapshot Dapodik -> tabel schools,
-                                        source 'dapodik', deaktivasi --replace)
+                                        SD/SMP/SMA/SMK/SLB, source 'dapodik',
+                                        deaktivasi --replace)
         MasterDataCapture.php         (Kemkes SISDMK puskesmas + SP2KP pasar ->
                                         snapshot JSON; keduanya HTTP polos)
         MasterDataImport.php          (impor snapshot -> master; tandai 'seed' &
@@ -191,7 +192,7 @@ Model utama dan relasinya (semua memakai SoftDeletes kecuali User/Subject):
                  Market, HealthFacility
   Kelurahan       : belongsTo Kecamatan; population, status
   School          : belongsTo Kecamatan + Kelurahan; belongsToMany Subject
-      (pivot school_subject); school_type SD/SMP/SMA/SMK/MI/MTS/MA
+      (pivot school_subject); school_type SD/SMP/SMA/SMK/MI/MTS/MA/SLB
       (School::SCHOOL_TYPES), npsn, lat/long, kondisi, jumlah siswa
       (male/female), guru, kelas, kapasitas, persentase sarana
       (perpustakaan, lab IPA, lab komputer, ruang guru, toilet, tempat ibadah)
@@ -216,7 +217,8 @@ poskamlings, tipkamtikmas, markets) menandai asal tiap baris:
     `public-data:master-purge` (purge terakhir: 280 kesehatan, 26 pasar,
     235 poskamling, 152 tipkamtikmas, 170 sekolah).
   - NULL (baris dibuat via CRUD): TIDAK pernah dinonaktifkan otomatis.
-Dari hasil penggantian: 196 sekolah Dapodik aktif, 11 puskesmas Kemkes aktif,
+Dari hasil penggantian: 216 sekolah Dapodik aktif (155 SD, 41 SMP, 9 SMA,
+10 SMK, 1 SLB), 11 puskesmas Kemkes aktif,
 1 pasar SP2KP aktif (Pasar Rakyat Bungku Tengah, kec Bungku Tengah +
 koordinat), 9 polsek manual aktif. Posyandu/pustu/RS/poskamling/tipkamtikmas
 placeholder sudah dihapus dan menunggu input manual via CRUD di tiap dashboard.
@@ -491,8 +493,10 @@ dijangkau, tanpa mengubah semantik dashboard:
      `scripts/dapodik/dapodik-capture.cjs` -> morowali-schools.json.
      Command `public-data:dapodik-import {file} {--replace}` memetakan baris
      ke tabel schools (NPSN sebagai kunci pencocokan; fallback nama bila NPSN
-     kosong). Hanya SD/SMP yang diimpor; `--replace` menonaktifkan placeholder
-     SD/SMP aktif yang tidak ada di snapshot. Bawahnya, sumber resmi lain
+     kosong). Seluruh jenjang Dapodik dasar & menengah diimpor: SD, SMP, SMA,
+     SMK, SLB (TK/PAUD di Dapodik PAUD, madrasah MI/MTs/MA di EMIS Kemenag;
+     keduanya di luar cakupan). `--replace` menonaktifkan placeholder aktif di
+     jenjang mana pun yang tidak ada di snapshot. Bawahnya, sumber resmi lain
      (referensi.data.kemdikbud.go.id dkk) tidak resolve DNS di lingkungan ini.
 
   2. PUSKESMAS -> Kemkes SISDMK (dreams.kemkes.go.id), halaman
@@ -661,7 +665,7 @@ dijangkau, tanpa mengubah semantik dashboard:
     tests/Feature/PublicDataScraperTest.php     - scraper legacy
     tests/Feature/PublicDataGeocodeCommandTest.php - geocode record
     test yang lain: DataImport, DataScraper, DashboardRefresh
-    (343 test, 1475 assertion total)
+    (343 test, 1480 assertion total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest

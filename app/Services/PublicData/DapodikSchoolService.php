@@ -21,7 +21,8 @@ class DapodikSchoolService
     public const SOURCE = 'dapodik';
 
     /**
-     * Import every SD/SMP row in a snapshot, creating or updating schools.
+     * Import every Dapodik jenjang row (SD/SMP/SMA/SMK/SLB) in a snapshot,
+     * creating or updating schools.
      *
      * @param  string  $path  Absolute path to the snapshot JSON file.
      * @return array{created: int, updated: int, skipped: int, no_kecamatan: int, deactivated: int, schools_total: int, semester: string|null, captured_at: string|null}
@@ -115,6 +116,9 @@ class DapodikSchoolService
         return match (mb_strtoupper($bentuk)) {
             'SD' => School::TYPE_SD,
             'SMP' => School::TYPE_SMP,
+            'SMA' => School::TYPE_SMA,
+            'SMK' => School::TYPE_SMK,
+            'SLB' => School::TYPE_SLB,
             default => null,
         };
     }
@@ -238,16 +242,16 @@ class DapodikSchoolService
     }
 
     /**
-     * Deactivate SD/SMP placeholder rows that the snapshot does not contain.
-     * Only rows owned by this pipeline (source null or 'dapodik') are touched,
-     * so rows produced by other sources are never retired.
+     * Deactivate placeholder rows of any jenjang that the snapshot does not
+     * contain. Only rows owned by this pipeline (source null or 'dapodik') are
+     * touched, so rows produced by other sources are never retired.
      *
      * @param  array<int, int>  $touchedIds
      */
     private function deactivateMissing(array $touchedIds): int
     {
         return School::where('is_active', true)
-            ->whereIn('school_type', [School::TYPE_SD, School::TYPE_SMP])
+            ->whereIn('school_type', School::SCHOOL_TYPES)
             ->where(function ($query): void {
                 $query->whereNull('source')->orWhere('source', self::SOURCE);
             })

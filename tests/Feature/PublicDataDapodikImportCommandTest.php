@@ -58,25 +58,30 @@ function dapodikKecamatan(string $name = 'Menui Kepulauan'): Kecamatan
     return Kecamatan::create(['name' => $name, 'is_active' => true]);
 }
 
-it('imports real Dapodik SD/SMP schools into the schools master table', function () {
+it('imports every Dapodik jenjang into the schools master table', function () {
     $kecamatan = dapodikKecamatan('Menui Kepulauan');
     Kelurahan::create(['kecamatan_id' => $kecamatan->id, 'name' => 'Samarengga']);
 
     $path = dapodikSnapshot([
         dapodikRow(),
         dapodikRow(['npsn' => '40202492', 'nama' => 'SMP NEGERI 1 BUNGKU', 'bentuk_pendidikan' => 'SMP']),
+        dapodikRow(['npsn' => '40202494', 'nama' => 'SMA NEGERI 1 BUNGKU', 'bentuk_pendidikan' => 'SMA']),
+        dapodikRow(['npsn' => '40202495', 'nama' => 'SMK NEGERI 1 BUNGKU', 'bentuk_pendidikan' => 'SMK']),
+        dapodikRow(['npsn' => '40202496', 'nama' => 'SLB NEGERI BUNGKU', 'bentuk_pendidikan' => 'SLB']),
         dapodikRow(['npsn' => '40202493', 'nama' => 'TK KENCANA', 'bentuk_pendidikan' => 'TK']),
     ]);
 
     $result = app(DapodikSchoolService::class)->import($path);
 
-    expect($result['created'])->toBe(2)
+    expect($result['created'])->toBe(5)
         ->and($result['skipped'])->toBe(1)
         ->and($result['no_kecamatan'])->toBe(0)
         ->and($result['deactivated'])->toBe(0);
 
     $sd = School::where('npsn', '40202491')->first();
-    $smp = School::where('npsn', '40202492')->first();
+    $sma = School::where('npsn', '40202494')->first();
+    $smk = School::where('npsn', '40202495')->first();
+    $slb = School::where('npsn', '40202496')->first();
 
     expect($sd)->not->toBeNull()
         ->and($sd->name)->toBe('SD NEGERI SAMARENGGA')
@@ -98,6 +103,11 @@ it('imports real Dapodik SD/SMP schools into the schools master table', function
         ->and((float) $sd->toilet_percentage)->toBe(100.0)
         ->and($sd->source)->toBe(DapodikSchoolService::SOURCE)
         ->and($sd->is_active)->toBeTrue();
+
+    expect($sma->school_type)->toBe(School::TYPE_SMA)
+        ->and($sma->name)->toBe('SMA NEGERI 1 BUNGKU')
+        ->and($smk->school_type)->toBe(School::TYPE_SMK)
+        ->and($slb->school_type)->toBe(School::TYPE_SLB);
 
     expect(School::where('npsn', '40202493')->exists())->toBeFalse();
 });
@@ -126,13 +136,19 @@ it('resolves the Sambori Kepulauan alias to the canonical kecamatan', function (
     expect(School::first()->kecamatan_id)->toBe($kecamatan->id);
 });
 
-it('deactivates placeholder SD/SMP schools absent from the snapshot with replace', function () {
+it('deactivates placeholder schools of any jenjang absent from the snapshot with replace', function () {
     dapodikKecamatan('Menui Kepulauan');
     dapodikKecamatan('Bungku Tengah');
 
     $placeholder = School::create([
         'name' => 'SDN 1 Bungku Tengah',
         'school_type' => School::TYPE_SD,
+        'kecamatan_id' => Kecamatan::where('name', 'Bungku Tengah')->first()->id,
+        'is_active' => true,
+    ]);
+    $placeholderSma = School::create([
+        'name' => 'SMAN 1 Bungku Tengah',
+        'school_type' => School::TYPE_SMA,
         'kecamatan_id' => Kecamatan::where('name', 'Bungku Tengah')->first()->id,
         'is_active' => true,
     ]);
@@ -148,8 +164,9 @@ it('deactivates placeholder SD/SMP schools absent from the snapshot with replace
 
     $result = app(DapodikSchoolService::class)->import($path, true);
 
-    expect($result['deactivated'])->toBe(1)
+    expect($result['deactivated'])->toBe(2)
         ->and($placeholder->fresh()->is_active)->toBeFalse()
+        ->and($placeholderSma->fresh()->is_active)->toBeFalse()
         ->and($otherSource->fresh()->source)->toBe('inggrid')
         ->and($otherSource->fresh()->is_active)->toBeTrue();
 });
