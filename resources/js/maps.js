@@ -3,6 +3,35 @@ import 'leaflet.markercluster';
 
 window.L = L;
 
+// Registers every Leaflet map so a shared (debounced) resize listener can
+// call invalidateSize() — on phones the address bar show/hide changes the
+// container size and without this the map tiles/render stay blurry or clipped.
+const activeMaps = [];
+let resizeBound = false;
+function registerResizeInvalidation(map) {
+    if (!map || activeMaps.includes(map)) {
+        return;
+    }
+    activeMaps.push(map);
+    if (resizeBound) {
+        return;
+    }
+    resizeBound = true;
+    let debounce = null;
+    window.addEventListener('resize', () => {
+        window.clearTimeout(debounce);
+        debounce = window.setTimeout(() => {
+            activeMaps.forEach((m) => {
+                try {
+                    m.invalidateSize();
+                } catch (e) {
+                    /* map might be destroyed */
+                }
+            });
+        }, 150);
+    });
+}
+
 export const categoryConfig = {
     SD: { sector: 'pendidikan', color: '#10b981', emoji: '🎓', label: 'SD' },
     SMP: { sector: 'pendidikan', color: '#2563eb', emoji: '🎓', label: 'SMP' },
@@ -135,6 +164,8 @@ export function createMap(containerId, markers, options = {}) {
     if (options.resize) {
         setTimeout(() => map.invalidateSize(), 120);
     }
+
+    registerResizeInvalidation(map);
 
     store.markers = markers;
     store.options = options;
@@ -270,6 +301,8 @@ export function createAtsBubbleMap(containerId, points, options = {}) {
         setTimeout(() => map.invalidateSize(), 120);
     }
 
+    registerResizeInvalidation(map);
+
     return map;
 }
 
@@ -367,6 +400,8 @@ export function createRiskChoropleth(containerId, geojson, regionMap = {}, optio
     if (options.resize) {
         setTimeout(() => map.invalidateSize(), 120);
     }
+
+    registerResizeInvalidation(map);
 
     return map;
 }

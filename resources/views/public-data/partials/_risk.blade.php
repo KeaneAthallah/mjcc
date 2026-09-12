@@ -45,7 +45,7 @@
     <x-card title="Peta Risiko Bencana (IRBI {{ $riskChoropleth['year'] ?? '' }})"
             subtitle="Level {{ $riskChoropleth['hazard'] ?? 'Multi Bahaya' }} per kabupaten se-Sulawesi Tengah"
             icon="🗺️" :padding="false">
-        <div id="map-irbi" class="h-[440px]"></div>
+        <div id="map-irbi" class="h-[300px] sm:h-[440px]"></div>
         @if (($riskChoropleth['regions_count'] ?? 0) < 13)
             <p class="px-4 py-2 text-[11px] text-amber-600">Beberapa kabupaten belum tersinkron — wilayah tanpa data ditandai abu-abu.</p>
         @endif

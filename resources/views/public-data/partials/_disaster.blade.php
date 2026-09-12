@@ -68,7 +68,7 @@
 
 @if ($mapData->isNotEmpty())
     <x-card title="Peta Bencana Terkini" subtitle="Lokasi kejadian bencana" icon="🗺️" :padding="false">
-        <div id="map-sitaba" class="h-[440px]"></div>
+        <div id="map-sitaba" class="h-[300px] sm:h-[440px]"></div>
     </x-card>
 @endif
 

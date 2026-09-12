@@ -331,9 +331,9 @@
                 </button>
             @endforeach
         </div>
-        <div id="map-tab-sekolah" class="map-tab h-[440px]"></div>
-        <div id="map-tab-ketertiban" class="map-tab h-[440px] hidden"></div>
-        <div id="map-tab-kesehatan" class="map-tab h-[440px] hidden"></div>
+        <div id="map-tab-sekolah" class="map-tab h-[300px] sm:h-[440px]"></div>
+        <div id="map-tab-ketertiban" class="map-tab h-[300px] sm:h-[440px] hidden"></div>
+        <div id="map-tab-kesehatan" class="map-tab h-[300px] sm:h-[440px] hidden"></div>
     </x-card>
 </div>
 @endsection

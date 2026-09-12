@@ -65,7 +65,7 @@
 
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
             <x-card title="Sebaran ATS per Kecamatan" icon="🗺️" :padding="false" class="xl:col-span-2">
-                <div id="ats-map" class="h-[420px]"></div>
+                <div id="ats-map" class="h-[300px] sm:h-[420px]"></div>
             </x-card>
             <x-card title="Kecamatan Prioritas" icon="🏆">
                 <div class="space-y-4">

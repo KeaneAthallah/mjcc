@@ -12,13 +12,13 @@
         window.flashMessages = @json($flashMessages);
     </script>
 </head>
-<body class="bg-gray-100 text-gray-800 h-screen overflow-hidden">
+<body class="bg-gray-100 text-gray-800 h-dvh overflow-hidden">
 
 <div class="flex h-full">
 
     <!-- ===== SIDEBAR ===== -->
-    <aside x-data="sidebarNav()"
-           :class="open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+    <aside
+           :class="$store.sidebar.open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
            class="fixed lg:static inset-y-0 left-0 z-40 w-64 flex flex-col bg-gradient-to-b from-gray-900 via-gray-900 to-emerald-700 text-white shadow-2xl transition-transform duration-300 lg:translate-x-0">
 
         <div class="px-6 py-5 text-center border-b border-white/10">
@@ -196,7 +196,7 @@
     </aside>
 
     {{-- Mobile sidebar overlay --}}
-    <div x-data="sidebarNav()" x-show="open" @click="close()"
+    <div x-show="$store.sidebar.open" @click="$store.sidebar.close()"
          class="fixed inset-0 z-30 bg-black/50 lg:hidden"></div>
 
     <!-- ===== MAIN ===== -->
@@ -204,16 +204,17 @@
 
         <!-- ===== HEADER ===== -->
         <header class="sticky top-0 z-20 bg-white border-b-2 border-emerald-100 shadow-sm flex items-center justify-between px-4 sm:px-7 h-[60px]">
-            <div class="flex items-center gap-3">
-                <button x-data="sidebarNav()" @click="toggle()" class="lg:hidden text-gray-700 p-1">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button @click="$store.sidebar.toggle()" class="lg:hidden text-gray-700 p-1">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <h1 class="text-[15px] sm:text-base font-extrabold tracking-wide text-gray-900">
-                    ◆ <span class="text-emerald-600">MOROWALI</span> JUARA COMMAND CENTER
+                <h1 class="text-[13px] sm:text-base font-extrabold tracking-wide text-gray-900 whitespace-nowrap">
+                    <span class="sm:hidden">◆ <span class="text-emerald-600">MJCC</span></span>
+                    <span class="hidden sm:inline">◆ <span class="text-emerald-600">MOROWALI</span> JUARA COMMAND CENTER</span>
                 </h1>
             </div>
 
-            <div class="flex items-center gap-4 sm:gap-5">
+            <div class="flex items-center gap-2 sm:gap-4">
                 <span class="hidden sm:inline-flex items-center text-[12px] font-bold text-gray-700">
                     <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse mr-1.5"></span> LIVE
                 </span>
@@ -232,7 +233,7 @@
                          @click.outside="open = false"
                          class="relative">
                         <button @click="open = !open"
-                                class="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100"
+                                class="relative flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100"
                                 title="Command Alerts">
                             <span class="text-base">🔔</span>
                             <span class="hidden md:inline text-[12px] font-bold">Alert</span>
@@ -240,8 +241,8 @@
                                   x-text="openCount">0</span>
                         </button>
                         <div x-show="open" x-cloak
-                             class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
-                            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                             class="absolute right-0 mt-2 w-80 max-w-[calc(100vw-1rem)] bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                             <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                                 <span class="text-[13px] font-extrabold text-gray-800">🚨 Command Alerts</span>
                                 <a href="{{ route('alerts.index') }}" class="text-[11px] font-bold text-emerald-600 hover:underline">Lihat Semua</a>
                             </div>
@@ -279,7 +280,7 @@
                        x-data="sosMonitor()"
                        data-open="{{ $sosStats['open'] ?? 0 }}"
                        data-active="{{ $sosStats['active'] ?? 0 }}"
-                       class="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 hover:bg-red-100"
+                       class="relative flex items-center gap-2 px-2.5 sm:px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 hover:bg-red-100"
                        :class="{ 'animate-pulse': active > 0 }"
                        title="SOS Darurat"
                     >
@@ -290,8 +291,8 @@
                 @endcan
 
                 <div x-data="liveClock()" class="text-right">
-                    <div class="text-lg sm:text-xl font-extrabold text-emerald-700 tabular-nums" x-text="time">--:--:--</div>
-                    <div class="text-[10px] sm:text-[11px] text-gray-600 capitalize" x-text="date">--</div>
+                    <div class="text-[15px] sm:text-xl font-extrabold text-emerald-700 tabular-nums" x-text="time">--:--:--</div>
+                    <div class="hidden sm:block text-[10px] sm:text-[11px] text-gray-600 capitalize" x-text="date">--</div>
                 </div>
 
                 {{-- User menu --}}
@@ -320,7 +321,7 @@
         </header>
 
         <!-- ===== CONTENT ===== -->
-        <main class="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
             @yield('content')
         </main>
     </div>

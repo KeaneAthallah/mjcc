@@ -7,7 +7,7 @@
 
 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 p-3">
     <form method="GET" action="{{ $action ?? url()->current() }}" class="flex flex-wrap items-center gap-3">
-        <div class="relative min-w-[200px] flex-1">
+        <div class="relative w-full sm:w-auto sm:flex-1 sm:min-w-[240px]">
             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
             <input
                 type="text"

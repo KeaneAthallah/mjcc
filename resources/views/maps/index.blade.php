@@ -67,7 +67,7 @@
         {{-- Map --}}
         <div class="lg:col-span-3">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div id="combined-map" class="h-[640px]"></div>
+                <div id="combined-map" class="h-[380px] sm:h-[520px] lg:h-[640px]"></div>
             </div>
         </div>
     </div>

@@ -70,7 +70,7 @@
     </div>
 
     <x-card title="Peta Persebaran Ketertiban" icon="🗺️" :padding="false">
-        <div id="security-map" class="h-[460px]"></div>
+        <div id="security-map" class="h-[300px] sm:h-[460px]"></div>
     </x-card>
 </div>
 @endsection

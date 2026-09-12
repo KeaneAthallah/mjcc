@@ -79,7 +79,7 @@
     </x-card>
 
     <x-card title="Peta Persebaran Fasilitas Kesehatan" icon="🗺️" :padding="false">
-        <div id="health-map" class="h-[460px]"></div>
+        <div id="health-map" class="h-[300px] sm:h-[460px]"></div>
     </x-card>
 </div>
 @endsection

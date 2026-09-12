@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="{{ asset('logo.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-gradient-to-br from-emerald-800 via-emerald-700 to-blue-800 text-white flex items-center justify-center p-4">
+<body class="min-h-dvh bg-gradient-to-br from-emerald-800 via-emerald-700 to-blue-800 text-white flex items-center justify-center p-4">
 
 {{-- Decorative blurred shapes --}}
 <div class="fixed inset-0 overflow-hidden pointer-events-none">

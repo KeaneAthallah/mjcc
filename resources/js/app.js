@@ -30,8 +30,8 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    // Mobile sidebar toggle
-    Alpine.data('sidebarNav', () => ({
+    // Mobile sidebar toggle (shared by hamburger, aside, and overlay)
+    Alpine.store('sidebar', {
         open: false,
         toggle() {
             this.open = !this.open;
@@ -39,7 +39,7 @@ document.addEventListener('alpine:init', () => {
         close() {
             this.open = false;
         },
-    }));
+    });
 
     // Dropdown (user menu, etc.)
     Alpine.data('dropdown', () => ({
