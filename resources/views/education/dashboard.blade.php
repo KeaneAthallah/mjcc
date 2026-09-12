@@ -91,6 +91,8 @@
     <x-card title="Peta Persebaran Sekolah" icon="🗺️" :padding="false">
         <div id="education-map" class="h-[460px]"></div>
     </x-card>
+
+    @include('partials.ats-widgets', ['ats' => $ats])
 </div>
 @endsection
 

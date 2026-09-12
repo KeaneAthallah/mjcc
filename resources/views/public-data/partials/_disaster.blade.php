@@ -5,6 +5,10 @@
     $types = $types ?? collect();
     $districts = $districts ?? collect();
     $recentCount = $recentCount ?? 0;
+    $byType = $byType ?? ['labels' => [], 'data' => []];
+    $byDistrict = $byDistrict ?? ['labels' => [], 'data' => []];
+    $impactTotal = $impactTotal ?? 0;
+    $insights = $insights ?? [];
     $disasterMapData = $mapData->map(fn ($e) => [
         'name' => $e->disaster_type,
         'latitude' => (float) $e->latitude,
@@ -15,11 +19,31 @@
     ])->values()->all();
 @endphp
 
-<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+<x-source-widget-header icon="🚨" title="Bencana Terkini" subtitle="Kejadian bencana terkini dari SITABA PUPR" key="sitaba" accent="amber">
+
+@include('partials.source-insights', ['insights' => $insights])
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
     <x-stat-card label="Total Bencana" :value="number_format($records?->total() ?? 0)" icon="⚠️" color="red"/>
     <x-stat-card label="30 Hari Terakhir" :value="number_format($recentCount)" icon="🕐" color="amber"/>
     <x-stat-card label="Jenis Bencana" :value="number_format($types->count())" icon="📋" color="blue"/>
+    <x-stat-card label="Penduduk Terdampak" :value="$impactTotal > 0 ? number_format($impactTotal) : '—'" icon="👥" color="violet"/>
 </div>
+
+@if (count($byType['data']) > 0 || count($byDistrict['data']) > 0)
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        @if (count($byType['data']) > 0)
+            <x-card title="Kejadian per Jenis" subtitle="Distribusi jenis bencana" icon="🏷️">
+                <div class="h-64"><canvas id="chart-sitaba-type"></canvas></div>
+            </x-card>
+        @endif
+        @if (count($byDistrict['data']) > 0)
+            <x-card title="Kejadian per Lokasi" subtitle="Distribusi kejadian per kecamatan" icon="📌">
+                <div class="h-64"><canvas id="chart-sitaba-district"></canvas></div>
+            </x-card>
+        @endif
+    </div>
+@endif
 
 <x-card title="Filter" subtitle="Saring menurut jenis dan lokasi" icon="🔍">
     <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -88,16 +112,34 @@
     @endif
 </x-card>
 
-@if ($mapData->isNotEmpty())
+</x-source-widget-header>
+
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const disasterData = @json($disasterMapData);
+    const palette = ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#06b6d4'];
 
+    const typeLabels = @json($byType['labels'] ?? []);
+    const typeData = @json($byType['data'] ?? []);
+    if (typeLabels.length > 0 && document.getElementById('chart-sitaba-type')) {
+        window.Mjcc.charts.makePie(document.getElementById('chart-sitaba-type'), typeLabels, typeData, palette.slice(0, typeLabels.length));
+    }
+
+    const distLabels = @json($byDistrict['labels'] ?? []);
+    const distData = @json($byDistrict['data'] ?? []);
+    if (distLabels.length > 0 && document.getElementById('chart-sitaba-district')) {
+        window.Mjcc.charts.makeBar(document.getElementById('chart-sitaba-district'), distLabels, [{
+            data: distData,
+            label: 'Kejadian',
+            backgroundColor: palette.slice(0, distLabels.length),
+            borderWidth: 1,
+        }]);
+    }
+
+    const disasterData = @json($disasterMapData);
     if (disasterData.length > 0) {
         window.Mjcc.maps.createMap('map-sitaba', disasterData, { resize: true, cluster: true, center: [-3.25, 121.85], zoom: 9 });
     }
 });
 </script>
 @endpush
-@endif

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Kecamatan;
 use App\Services\AlertService;
+use App\Services\AtsDashboardService;
 use App\Services\EducationDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -12,6 +13,7 @@ class EducationDashboardController extends Controller
 {
     public function __construct(
         private readonly EducationDashboardService $service,
+        private readonly AtsDashboardService $ats,
         private readonly AlertService $alerts,
     ) {}
 
@@ -26,6 +28,7 @@ class EducationDashboardController extends Controller
         $facilities = $this->service->facilityProgress($kecamatanId);
         $map = $this->service->map($kecamatanId);
         $kecamatans = Kecamatan::orderBy('name')->get(['id', 'name']);
+        $ats = $this->ats->dashboard($kecamatanId);
 
         $dashboardData = [
             'students' => $students,
@@ -42,7 +45,8 @@ class EducationDashboardController extends Controller
             'map',
             'kecamatans',
             'kecamatanId',
-            'alerts'
+            'alerts',
+            'ats'
         ));
     }
 }

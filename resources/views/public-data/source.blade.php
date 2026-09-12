@@ -69,6 +69,12 @@
         @include('public-data.partials._disaster')
     @elseif ($source->key === 'apbd')
         @include('public-data.partials._apbd')
+    @elseif ($source->key === 'ats')
+        @include('public-data.partials._ats')
+    @elseif ($source->key === 'dapodik')
+        @include('public-data.partials._dapodik')
+    @elseif ($source->key === 'satudata')
+        @include('public-data.partials._satudata')
     @else
         @include('public-data.partials._generic')
     @endif

@@ -7,6 +7,7 @@ use App\Models\CommodityPrice;
 use App\Models\DisasterEvent;
 use App\Models\DisasterRiskIndex;
 use App\Models\ExternalData;
+use App\Models\Kecamatan;
 use App\Models\User;
 use App\Services\PublicData\SourceRegistry;
 
@@ -112,7 +113,8 @@ it('shows the source page for SP2KP with commodity data', function () {
         ->assertOk()
         ->assertSee('Pasar & Kebutuhan Pokok')
         ->assertSee('Beras')
-        ->assertSee('Rp 12.000');
+        ->assertSee('Rp 12.000')
+        ->assertSee('Komoditas termonitor');
 });
 
 it('shows the source page for BPS with observation data', function () {
@@ -138,7 +140,8 @@ it('shows the source page for BPS with observation data', function () {
         ->assertOk()
         ->assertSee('BPS')
         ->assertSee('Pertumbuhan Ekonomi')
-        ->assertSee('5,20');
+        ->assertSee('5,20')
+        ->assertSee('Observasi tersimpan');
 });
 
 it('shows the source page for IRBI with risk data', function () {
@@ -158,7 +161,8 @@ it('shows the source page for IRBI with risk data', function () {
         ->assertOk()
         ->assertSee('Indeks Risiko Bencana')
         ->assertSee('Banjir')
-        ->assertSee('Bungku Tengah');
+        ->assertSee('Bungku Tengah')
+        ->assertSee('Sebaran level risiko');
 });
 
 it('shows the source page for Sitaba with disaster data', function () {
@@ -179,7 +183,8 @@ it('shows the source page for Sitaba with disaster data', function () {
         ->assertOk()
         ->assertSee('Bencana Terkini')
         ->assertSee('Banjir')
-        ->assertSee('Aktif');
+        ->assertSee('Aktif')
+        ->assertSee('Bencana terpantau');
 });
 
 it('shows the source page for APBD with financial data', function () {
@@ -199,7 +204,8 @@ it('shows the source page for APBD with financial data', function () {
         ->get(route('public-data.source', 'apbd'))
         ->assertOk()
         ->assertSee('Monitoring APBD')
-        ->assertSee('Pajak Daerah');
+        ->assertSee('Pajak Daerah')
+        ->assertSee('Realisasi anggaran');
 });
 
 it('shows 404 for unknown source', function () {
@@ -215,6 +221,106 @@ it('shows sync button on source page for admin', function () {
         ->get(route('public-data.source', 'ats'))
         ->assertOk()
         ->assertSee('Sinkronisasi');
+});
+
+it('renders the ATS executive widgets on the ats source page', function () {
+    Kecamatan::factory()->create(['name' => 'Bahodopi']);
+
+    foreach ([
+        ['Kabupaten Morowali', 'Anak Tidak Sekolah', 100],
+        ['Kabupaten Morowali', 'Anak Tidak Sekolah - DO', 60],
+        ['Kabupaten Morowali', 'Anak Tidak Sekolah - Verifikasi Sudah', 30],
+        ['Kabupaten Morowali', 'Anak Tidak Sekolah - Verifikasi Belum', 70],
+        ['Bahodopi', 'Anak Tidak Sekolah', 100],
+    ] as [$location, $indicator, $value]) {
+        ExternalData::create([
+            'sector' => 'pendidikan',
+            'source' => 'ats',
+            'source_key' => 'ats',
+            'source_url' => 'https://ats.example',
+            'dataset' => 'Verval ATS',
+            'topic' => 'Pendidikan',
+            'year' => now()->year,
+            'location' => $location,
+            'indicator' => $indicator,
+            'value' => $value,
+            'unit' => 'Anak',
+            'dedupe_key' => ExternalData::dedupeKey('pendidikan', 'ats', 'Verval ATS', now()->year, $location, $indicator),
+        ]);
+    }
+
+    $this->actingAs($this->user)
+        ->get(route('public-data.source', 'ats'))
+        ->assertOk()
+        ->assertSee('Anak Tidak Sekolah (ATS)')
+        ->assertSee('Progres Verifikasi')
+        ->assertSee('Bahodopi')
+        ->assertSee('Total Record');
+});
+
+it('renders the Dapodik executive widgets on the dapodik source page', function () {
+    Kecamatan::factory()->create(['name' => 'Bungku Tengah']);
+
+    foreach ([
+        ['Kabupaten Morowali', 'Jumlah Sekolah', 10],
+        ['Kabupaten Morowali', 'Jumlah Siswa', 1000],
+        ['Kabupaten Morowali', 'Jumlah Guru', 80],
+        ['Bungku Tengah', 'Jumlah Sekolah', 3],
+        ['Bungku Tengah', 'Jumlah Siswa', 250],
+    ] as [$location, $indicator, $value]) {
+        ExternalData::create([
+            'sector' => 'pendidikan',
+            'source' => 'dapodik',
+            'source_key' => 'dapodik',
+            'source_url' => 'https://dapodik.example',
+            'dataset' => 'Data Pokok Pendidikan',
+            'topic' => 'Pendidikan',
+            'year' => now()->year,
+            'location' => $location,
+            'indicator' => $indicator,
+            'value' => $value,
+            'unit' => 'Satuan',
+            'dedupe_key' => ExternalData::dedupeKey('pendidikan', 'dapodik', 'Data Pokok Pendidikan', now()->year, $location, $indicator),
+        ]);
+    }
+
+    $this->actingAs($this->user)
+        ->get(route('public-data.source', 'dapodik'))
+        ->assertOk()
+        ->assertSee('Data Dapodik')
+        ->assertSee('Sekolah terdaftar')
+        ->assertSee('Siswa per Kecamatan')
+        ->assertSee('Bungku Tengah');
+});
+
+it('renders the Satu Data Morowali widgets on the satudata source page', function () {
+    foreach ([
+        ['PDRB Atas Dasar Harga Berlaku', 'Kabupaten Morowali'],
+        ['PDRB Per Kapita', 'Kabupaten Morowali'],
+    ] as $i => [$indicator, $location]) {
+        ExternalData::create([
+            'sector' => 'ekonomi',
+            'source' => 'satudata',
+            'source_key' => 'satudata',
+            'source_url' => 'https://satudata.example',
+            'dataset' => 'Ekonomi & Pembangunan',
+            'topic' => 'PDRB',
+            'year' => 2024,
+            'location' => $location,
+            'indicator' => $indicator,
+            'value' => 100 + $i,
+            'unit' => 'miliar',
+            'dedupe_key' => ExternalData::dedupeKey('ekonomi', 'satudata', 'Ekonomi & Pembangunan', 2024, $location, $indicator),
+        ]);
+    }
+
+    $this->actingAs($this->user)
+        ->get(route('public-data.source', 'satudata'))
+        ->assertOk()
+        ->assertSee('Satu Data Morowali')
+        ->assertSee('Record tersimpan')
+        ->assertSee('Komposisi per Dataset')
+        ->assertSee('Ekonomi & Pembangunan');
 });
 
 it('prevents viewer from syncing a source', function () {

@@ -28,14 +28,23 @@ Selain dashboard, aplikasi ini menawarkan:
       eksternal (Satu Data Morowali, ATS, Dapodik, SP2KP, BPS, IRBI,
       Sitaba/Bencana Terkini, APBD) -> dashboard per sumber + peta choropleth
       Indeks Risiko Bencana; dijalankan terjadwal via command `public-data:sync`.
-  - REAL MASTER DATA : pengganti placeholder seeder dengan data nyata
-      per-entitas (sekolah via Dapodik, puskesmas via Kemkes SISDMK, pasar via
-      SP2KP) lewat `public-data:dapodik-import` dan `public-data:master-replace`;
-      placeholder tanpa sumber publik dinonaktifkan, lalu bisa dihapus permanen
-      via `public-data:master-purge` (sudah dieksekusi, DB kini berisi data
-      nyata di semua sektor).
+- REAL MASTER DATA : pengganti placeholder seeder dengan data nyata
+       per-entitas (sekolah via Dapodik, puskesmas via Kemkes SISDMK, pasar via
+       SP2KP) lewat `public-data:dapodik-import` dan `public-data:master-replace`;
+       placeholder tanpa sumber publik dinonaktifkan, lalu bisa dihapus permanen
+       via `public-data:master-purge` (sudah dieksekusi, DB kini berisi data
+       nyata di semua sektor).
+  - WIDGET EKSEKUTIF  : tiap dashboard & halaman sumber kini dibuka dengan
+       blok "Insight & Rekomendasi" + serangkaian grafik (bar/donut/pie/map).
+       Dashboard Pendidikan menampilkan kartu Anak Tidak Sekolah (ATS) langsung
+       di beranda pendidikan (komposisi status, progres verifikasi, pemulihan
+       DO per jenjang/tingkat, alasan DO, bubble map per kecamatan, peringkat
+       kecamatan, insight). Halaman /data-publik-multi/sumber/{key} untuk
+       SATU DATA / DAPODIK / SP2KP / BPS / IRBI / SITABA / APBD / ATS juga
+       menampilkan "executive widgets" seragam (banner, KPI, insight,
+       grafik tambahan) yang dihitung per sumber di controller.
   - REST API `/api/v1`  : autentikasi Sanctum (login/register/verify email)
-      untuk memakai semua data + alur SOS dari aplikasi mobile.
+       untuk memakai semua data + alur SOS dari aplikasi mobile.
 
 --------------------------------------------------------------------------------
 2.  TEKNOLOGI & VERSI
@@ -76,7 +85,12 @@ Selain dashboard, aplikasi ini menawarkan:
         SosController.php                -> peta & detail SOS (index/live/show)
         PublicDataController.php         -> legacy Satu Data Morowali
         PublicDataDashboardController.php-> Public Data Intelligence Center
-                                            (dashboard/kategori/sumber/sync)
+                                            (dashboard/kategori/sumber/sync;
+                                            tiap data method sumber menghasilkan
+                                            KPI + array `insights` + agregat
+                                            chart: commodityData, bpsData,
+                                            riskData, disasterData, apbdData,
+                                            genericData, dapodikData, atsData)
         DataImportController.php         -> Sinkronisasi ke Data Master
         SchoolController.php, PolsekController.php, TipkamtikmasController.php,
         PoskamlingController.php, MarketController.php, HealthFacilityController.php,
@@ -122,6 +136,10 @@ Selain dashboard, aplikasi ini menawarkan:
       AlertService.php            (isyarat "Perlu Perhatian" per sektor)
       ActivityLogService.php      (catat & query log audit)
       EducationDashboardService.php
+      AtsDashboardService.php     (agregasi ATS utk seksi widget eksekutif di
+                                  dashboard Pendidikan & halaman sumber 'ats':
+                                  komposisi, verifikasi, DO per jenjang/tingkat,
+                                  alasan, map bubble, ranking, insight)
       SecurityDashboardService.php
       HealthDashboardService.php
       MapService.php              (data peta gabungan semua sektor)
@@ -170,8 +188,22 @@ Selain dashboard, aplikasi ini menawarkan:
       charts.js         helper pembuat grafik (bar, stacked, doughnut, pie,
                         polar, horizontal)
       maps.js           setup Leaflet + marker cluster + renderMarkers
-    views/              Blade (layouts, components, auth, dashboard, edu,
-                        security, health, master, maps, users, profile)
+views/              Blade (layouts, components, auth, dashboard, edu,
+                         security, health, master, maps, users, profile)
+      partials/
+        ats-widgets.blade.php   -> seksi eksekutif ATS (markup + @push script
+                                   chart; dipakai dashboard Pendidikan &
+                                   partial sumber 'ats'; guard
+                                   document.getElementById agar aman saat
+                                   data kosong; dukungan flag $hideSourceLink)
+        source-insights.blade.php -> blok "Insight & Rekomendasi" bersama
+                                   (grid kartu icon+judul+detail)
+      components/
+        source-widget-header.blade.php -> banner header eksekutif bersama
+                                   (ikon, judul, chip sinkronisasi, tombol
+                                   "Sumber ↗", aksen emerald/blue/violet/
+                                   red/amber) — membungkus seluruh isi
+                                   partial sumber dalam satu kartu)
   routes/web.php        semua route web
   tests/                Pest feature tests
 
@@ -245,6 +277,11 @@ Model Public Data Intelligence Center:
   ExternalData     : data generik per indikator (sector, source_key, dataset,
                     topic, year, location, indicator, value, unit,
                     dedupe_key unik) - dipakai ATS & Dapodik.
+                    Indikator ATS: 'Anak Tidak Sekolah', '<wilayah> - DO',
+                    '<wilayah> - Verifikasi Sudah/Belum' (dataset 'Verval ATS',
+                    unit 'Anak'). Indikator Dapodik: 'Jumlah Sekolah',
+                    'Jumlah Siswa', 'Jumlah Guru' (lokasi = kecamatan atau
+                    'Kabupaten Morowali').
   BpsDataset       : metadata dataset BPS (nama, sumber, kategori).
   BpsObservation   : observasi statistik BPS (dataset_id, region, periode,
                     tahun, nilai, satuan).
@@ -480,6 +517,27 @@ command `php artisan public-data:sync` (terjadwal 03:00). Arsitektur:
   (/api/v1/public-data/...). Dashboard web (PublicDataDashboardController)
   menyajikan statistik, tabel, grafik Chart.js, dan peta per sumber.
 
+  Executive widget per sumber (gaya seragam di /data-publik-multi/sumber/*):
+  setiap data method sumber (commodityData, bpsData, riskData, disasterData,
+  apbdData, genericData, dapodikData, atsData) menghitung KPI + array
+  `insights` (judul + detail) + agregat chart. Halaman dibuka banner
+  komponen `source-widget-header` (ikon, judul, chip sinkronisasi, tombol
+  "Sumber") lalu blok `@include('partials.source-insights')` + serangkaian
+  grafik:
+    - sp2kp   : KPI + kenaikan/penurunan tertinggi + rata-rata perubahan
+    - bps     : observasi per tahun (bar) + komposisi per dataset (donut)
+    - irbi    : sebaran level risiko (donut tinggi/sedang/rendah) + rata-rata
+                (chart peta choropleth tetap di dashboard IRBI)
+    - sitaba  : kejadian per jenis (pie) & per lokasi (bar) + penduduk terdampak
+    - apbd    : target vs realisasi (bar), tingkat realisasi %, surplus/defisit
+    - dapodik : KPI Sekolah/Siswa/Guru + chart siswa & sekolah per kecamatan
+                (bar) + peringkat 5 teratas/kecil + tabel rekap per kecamatan
+    - satudata: nilai per tahun (bar) + komposisi per dataset (donut)
+    - ats     : widget eksekutif penuh (donut komposisi, verifikasi, pemulihan
+                DO, bar jenjang/tingkat DO, alasan, bubble map per kecamatan,
+                ranking) via partial ats-widgets (dipakai bersama dashboard
+                pendidikan).
+
   Catatan lapangan (penting):
     - HttpClient.php method get/post/postForm menerima argumen ke-4
       `bool $verify = true`; saat false, request memakai
@@ -579,7 +637,7 @@ dijangkau, tanpa mengubah semantik dashboard:
   resources/js/charts.js -> window.Mjcc.charts.* helper grafik
   resources/js/maps.js   -> window.Mjcc.maps.* (L, categoryConfig, createMap,
                             renderMarkers, renderResponders,
-                            createRiskChoropleth)
+                            createAtsBubbleMap, createRiskChoropleth)
     - kategori `responder` (sector 'ketertiban', warna biru #2563eb,
       emoji 🚓) untuk marker posisi petugas.
     - renderResponders(map, sender, responders, options): hapus layer lama,
@@ -588,6 +646,10 @@ dijangkau, tanpa mengubah semantik dashboard:
       GET /route/v1/driving/{lng,lat};{lng,lat}?overview=full&geometries=geojson),
       cache hasil rute per koordinat utk hemat request; memanggil
       options.onRoute({distanceKm, etaMin}).
+    - createAtsBubbleMap(containerId, data) + renderAtsNasionalKecamatan:
+      bubble map "Sebaran ATS per Kecamatan" (satu lingkaran per kecamatan,
+      ukuran proporsional jumlah ATS, warna sesuai tingkat; popup total ATS;
+      dapat dikombinasikan dengan klik baris tabel/bar chart utk filter).
     - createRiskChoropleth(containerId, geojson, regionMap, options): peta
       choropleth IRBI. `geojson` = FeatureCollection poligon kabupaten,
       `regionMap` = { region_code: {name, index, level} } (region_code
@@ -595,6 +657,13 @@ dijangkau, tanpa mengubah semantik dashboard:
       (Tinggi merah #dc2626 / Sedang kuning #f59e0b / Rendah hijau
       #10b981); wilayah tanpa data abu-abu putus-putus; popup menampilkan
       nama wilayah + indeks + chip level; legend otomatis (kontrol Leaflet).
+
+  PENTING (Chart.js v4): setiap dataset chart bar/line/stacked WAJIB
+  menyertakan `label: '...'`. Chart.js menghitung meta.label = '' +
+  dataset.label; dataset tanpa `label` membuat legend & tooltip menampilkan
+  "undefined" (regresi yang pernah melanda hampir semua bar chart yang
+  dibangun inline; chart donut/pie tidak terpengaruh karena membaca label
+  dari data labels).
 
   Build: `npm run build` (produksi) / `npm run dev` (dev, hot reload).
   Jika perubahan frontend tidak terlihat, jalankan salah satu perintah di atas.
@@ -609,8 +678,21 @@ dijangkau, tanpa mengubah semantik dashboard:
   Komponen reusable (resources/views/components):
       stat-card, card, alert, button, input, select (prop `selected`),
       badge, page-title, empty-state, pagination, filter-bar,
+      source-widget-header (banner eksekutif ikon+judul+chip sinkronisasi+
+      tombol sumber; aksen emerald/blue/violet/red/amber),
       kecamatan-kelurahan (dropdown berantai dinamis via Alpine + AJAX
       ke api.kelurahans.by-kecamatan).
+
+  Partial bersama (resources/views/partials/):
+      ats-widgets.blade.php      - seksi eksekutif ATS (KPI, donut komposisi/
+                                   verifikasi/pemulihan, bar jenjang/tingkat DO,
+                                   horizontal bar alasan, bubble map per
+                                   kecamatan, ranking top/bottom, insight);
+                                   dipakai dashboard pendidikan & halaman sumber
+                                   'ats'; guard document.getElementById.
+      source-insights.blade.php  - blok "Insight & Rekomendasi" bersama (grid
+                                   kartu icon + judul + detail), menerima array
+                                   `$insights` dari controller.
 
   Halaman per sektor + CRUD untuk tiap resource.
   Halaman SOS (resources/views/sos/): index.blade.php (peta live semua SOS
@@ -664,9 +746,18 @@ dijangkau, tanpa mengubah semantik dashboard:
                                           Audit, RouteNames
     tests/Feature/PublicDataPagesTest.php       - halaman web Public Data
     tests/Feature/PublicDataDashboardTest.php   - dashboard/kategori/sumber
+                                          + executive widget per sumber
+                                          (assertion teks insight tiap sumber:
+                                          'Komoditas termonitor', 'Observasi
+                                          tersimpan', 'Sebaran level risiko',
+                                          'Bencana terpantau', 'Realisasi
+                                          anggaran', ranking dapodik) + render
+                                          widget dapodik & satudata
     tests/Feature/PublicDataApiTest.php         - /api/v1/public-data (tanpa token)
     tests/Feature/PublicDataSyncCommandTest.php - sinkronisasi 8 sumber via
-                                          Http::fake (stub HTML/JSON per sumber)
+                                          Http::fake (stub HTML/JSON per sumber,
+                                          termasuk halaman ATS 'hasil
+                                          verifikasi' & 'aktif kembali')
     tests/Feature/PublicDataDapodikImportCommandTest.php - impor snapshot
                                           Dapodik (mapping, idempoten, --replace,
                                           duplikat nama beda NPSN, file invalid)
@@ -682,8 +773,12 @@ dijangkau, tanpa mengubah semantik dashboard:
                                           fixture) & respons pasar SP2KP
     tests/Feature/PublicDataScraperTest.php     - scraper legacy
     tests/Feature/PublicDataGeocodeCommandTest.php - geocode record
+    tests/Feature/EducationDashboardAtsTest.php - seksi eksekutif ATS di
+                                          dashboard pendidikan (donut komposisi,
+                                          verifikasi, pemulihan DO, bar jenjang,
+                                          bubble map, ranking, insight)
     test yang lain: DataImport, DataScraper, DashboardRefresh
-    (343 test, 1480 assertion total)
+    (353 test, 1565 assertion total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest

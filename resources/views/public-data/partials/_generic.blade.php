@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chartData.labels && chartData.labels.length > 0) {
         window.Mjcc.charts.makeBar(document.getElementById('chart-generic'), chartData.labels, [{
             data: chartData.data,
+            label: 'Nilai',
             backgroundColor: 'rgba(139,92,246,0.8)',
             borderColor: 'rgba(139,92,246,1)',
             borderWidth: 1,

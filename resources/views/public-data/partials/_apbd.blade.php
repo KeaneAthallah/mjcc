@@ -6,13 +6,21 @@
     $totalPendapatan = $totalPendapatan ?? 0;
     $totalBelanja = $totalBelanja ?? 0;
     $categories = $categories ?? collect();
+    $realizationRate = $realizationRate ?? 0;
+    $fiskal = $fiskal ?? 0;
+    $insights = $insights ?? [];
 @endphp
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+<x-source-widget-header icon="💰" title="Monitoring APBD" subtitle="Anggaran Pendapatan dan Belanja Daerah dari DJPK Kemenkeu" key="apbd" accent="violet">
+
+@include('partials.source-insights', ['insights' => $insights])
+
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
     <x-stat-card label="Total APBD" :value="'Rp ' . number_format($totalPendapatan / 1000000000, 1, ',', '.') . ' M'" icon="💰" color="emerald"/>
     <x-stat-card label="Pendapatan" :value="'Rp ' . number_format($totalPendapatan / 1000000000, 1, ',', '.') . ' M'" icon="📈" color="blue"/>
     <x-stat-card label="Belanja" :value="'Rp ' . number_format($totalBelanja / 1000000000, 1, ',', '.') . ' M'" icon="📉" color="red"/>
-    <x-stat-card label="Tahun" :value="(string) $year" icon="📅" color="amber"/>
+    <x-stat-card label="Realisasi" :value="$realizationRate . '%'" icon="🎯" color="amber"/>
+    <x-stat-card label="Tahun" :value="(string) $year" icon="📅" color="violet"/>
 </div>
 
 {{-- Tahun Filter --}}
@@ -40,7 +48,7 @@
 @endif
 
 {{-- Tabel --}}
-<x-card title="Data APBD" subtitle="Anggaran Pendapatan dan Belanja Daerah Tahun {$year}" icon="📋" :padding="false">
+<x-card title="Data APBD" subtitle="Anggaran Pendapatan dan Belanja Daerah Tahun {{ $year }}" icon="📋" :padding="false">
     @if ($records->isEmpty())
         <x-empty-state icon="💰" title="Belum ada data APBD" message="Data APBD belum berhasil diambil dari sumber DJPK Kemenkeu."/>
     @else
@@ -78,6 +86,8 @@
     @endif
 </x-card>
 
+</x-source-widget-header>
+
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -96,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('chart-apbd-comparison')) {
             window.Mjcc.charts.makeBar(document.getElementById('chart-apbd-comparison'), catLabels, [{
                 data: catData,
+                label: 'Realisasi',
                 backgroundColor: palette.slice(0, catLabels.length),
                 borderWidth: 1,
             }]);

@@ -4,14 +4,27 @@
     $hazardTypes = $hazardTypes ?? collect();
     $riskCounts = $riskCounts ?? ['Tinggi' => 0, 'Sedang' => 0, 'Rendah' => 0];
     $riskChoropleth = $riskChoropleth ?? ['year' => null, 'hazard' => null, 'regions' => [], 'regions_count' => 0, 'geojson_url' => null];
+    $averageIndex = $averageIndex ?? null;
+    $insights = $insights ?? [];
 @endphp
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+<x-source-widget-header icon="🌋" title="Indeks Risiko Bencana (IRBI)" subtitle="Indeks Risiko Bencana Indonesia per wilayah dari BNPB" key="irbi" accent="red">
+
+@include('partials.source-insights', ['insights' => $insights])
+
+<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
     <x-stat-card label="Total Data" :value="number_format($records->count())" icon="🗺️" color="blue"/>
     <x-stat-card label="Risiko Tinggi" :value="number_format($riskCounts['Tinggi'])" icon="🔴" color="red"/>
     <x-stat-card label="Risiko Sedang" :value="number_format($riskCounts['Sedang'])" icon="🟡" color="amber"/>
     <x-stat-card label="Risiko Rendah" :value="number_format($riskCounts['Rendah'])" icon="🟢" color="green"/>
+    <x-stat-card label="Rata-rata Indeks" :value="$averageIndex !== null ? number_format($averageIndex, 2, ',', '.') : '—'" icon="📐" color="violet"/>
 </div>
+
+@if (count(array_filter($riskCounts)) > 0)
+    <x-card title="Sebaran Level Risiko" subtitle="Distribusi tingkat risiko di seluruh wilayah" icon="🧮">
+        <div class="h-64"><canvas id="chart-risk-levels"></canvas></div>
+    </x-card>
+@endif
 
 <x-card title="Filter" subtitle="Saring menurut jenis bahaya" icon="🔍">
     <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -75,12 +88,17 @@
     @endif
 </x-card>
 
-@if (!empty($riskChoropleth['regions']))
+</x-source-widget-header>
+
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const choropleth = @json($riskChoropleth);
+    const riskCounts = @json(array_values($riskCounts));
+    if (riskCounts.some(v => v > 0) && document.getElementById('chart-risk-levels')) {
+        window.Mjcc.charts.makeDoughnut(document.getElementById('chart-risk-levels'), ['Tinggi', 'Sedang', 'Rendah'], riskCounts, ['#ef4444', '#f59e0b', '#10b981']);
+    }
 
+    const choropleth = @json($riskChoropleth);
     if (choropleth.regions && Object.keys(choropleth.regions).length > 0 && choropleth.geojson_url) {
         fetch(choropleth.geojson_url)
             .then((res) => res.ok ? res.json() : null)
@@ -99,4 +117,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
-@endif

@@ -175,6 +175,102 @@ export function legendItems(categories) {
 }
 
 /**
+ * Bubble map "Sebaran ATS per Kecamatan": satu lingkaran per kecamatan yang
+ * ukurannya proporsional terhadap jumlah ATS dan warnanya mengikuti tingkat
+ * kepadatan (rendah/sedang/tinggi).
+ */
+export function createAtsBubbleMap(containerId, points, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        return null;
+    }
+
+    const map = L.map(containerId, { scrollWheelZoom: true }).setView(options.center ?? [-3.15, 121.95], options.zoom ?? 9);
+    const tiers = options.tiers ?? { tinggi: 400, sedang: 200 };
+    const tiersConfig = {
+        Tinggi: { color: '#dc2626', label: '>= ' + tiers.tinggi + ' anak' },
+        Sedang: { color: '#f59e0b', label: tiers.sedang + '–' + (tiers.tinggi - 1) + ' anak' },
+        Rendah: { color: '#10b981', label: '< ' + tiers.sedang + ' anak' },
+    };
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    const bounds = [];
+
+    (points ?? []).forEach((point) => {
+        const lat = Number(point.latitude);
+        const lng = Number(point.longitude);
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+            return;
+        }
+
+        const total = Number(point.total) || 0;
+        const level = total >= tiers.tinggi ? 'Tinggi' : total >= tiers.sedang ? 'Sedang' : 'Rendah';
+        const radius = Math.max(9, Math.sqrt(Math.max(total, 1)) * 2.4);
+
+        const marker = L.circleMarker([lat, lng], {
+            radius,
+            color: point.selected ? '#0f172a' : '#ffffff',
+            weight: point.selected ? 3 : 1.5,
+            fillColor: tiersConfig[level].color,
+            fillOpacity: 0.75,
+        });
+
+        marker.bindPopup(`
+            <div style="min-width:200px">
+                <div style="font-weight:800;color:#9f1239;margin-bottom:6px;font-size:14px">${point.name}</div>
+                <div style="line-height:1.8;font-size:13px">
+                    <div>Total ATS: <strong>${Number(total).toLocaleString('id-ID')}</strong> anak ${point.selected ? '<span style="background:#fce7f3;color:#9d174d;padding:1px 7px;border-radius:10px;font-weight:700;font-size:11px">dipilih</span>' : ''}</div>
+                    <div>DO: <strong>${Number(point.do || 0).toLocaleString('id-ID')}</strong></div>
+                    <div>LTM: <strong>${Number(point.ltm || 0).toLocaleString('id-ID')}</strong></div>
+                    <div>BPB: <strong>${Number(point.bpb || 0).toLocaleString('id-ID')}</strong></div>
+                    <div style="margin-top:4px;border-top:1px solid #f3f4f6;padding-top:4px">
+                        <span style="display:inline-block;background:#d1fae5;color:#047857;padding:1px 8px;border-radius:10px;font-weight:700;font-size:12px">Verifikasi ${point.verified_pct}%</span>
+                        <span style="display:inline-block;background:#dbeafe;color:#1d4ed8;padding:1px 8px;border-radius:10px;font-weight:700;font-size:12px;margin-left:4px">Kembali ${point.recovery_pct}%</span>
+                    </div>
+                </div>
+            </div>
+        `);
+
+        marker.addTo(map);
+        bounds.push([lat, lng]);
+    });
+
+    if (bounds.length && options.fitBounds !== false) {
+        map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: options.maxZoom ?? 11 });
+    }
+
+    if (options.showLegend !== false) {
+        const legend = L.control({ position: 'bottomright' });
+
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'leaflet-bar');
+            div.style.cssText = 'background:#fff;padding:8px 12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.3);font-size:12px;color:#374151;font-weight:600;min-width:116px';
+            div.innerHTML =
+                `<div style="font-size:11px;color:#6b7280;font-weight:700;margin-bottom:4px">SEBARAN ATS</div>` +
+                Object.entries(tiersConfig)
+                    .map(([key, cfg]) => `<div style="display:flex;align-items:center;gap:7px;line-height:1.9"><span style="width:13px;height:13px;border-radius:50%;background:${cfg.color};display:inline-block"></span>${key} (${cfg.label})</div>`)
+                    .join('');
+            return div;
+        };
+
+        legend.addTo(map);
+    }
+
+    const store = (map._mjccStore = map._mjccStore || {});
+    store.atsPoints = points;
+
+    if (options.resize) {
+        setTimeout(() => map.invalidateSize(), 120);
+    }
+
+    return map;
+}
+
+/**
  * Renders petugas (responder) markers plus a road route from each petugas
  * back toward the requested location. The route is fetched on-demand from the
  * public OSRM demo server and drawn as a dashed polyline, mirroring the

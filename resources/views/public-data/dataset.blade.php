@@ -171,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chartData.labels.length > 0) {
         window.Mjcc.charts.makeBar(document.getElementById('chart-public-dataset'), chartData.labels, [{
             data: chartData.data,
+            label: 'Nilai',
             backgroundColor: 'rgba(16,185,129,0.8)',
             borderColor: 'rgba(16,185,129,1)',
             borderWidth: 1,

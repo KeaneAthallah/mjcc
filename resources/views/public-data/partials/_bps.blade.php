@@ -3,15 +3,16 @@
     $observations = $observations ?? null;
     $datasets = $datasets ?? collect();
     $years = $years ?? collect();
+    $byYear = $byYear ?? ['labels' => [], 'data' => []];
+    $datasetBreakdown = $datasetBreakdown ?? ['labels' => [], 'data' => []];
+    $insights = $insights ?? [];
 @endphp
 
-<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-    <x-stat-card label="Total Observasi" :value="number_format($observations?->total() ?? 0)" icon="📊" color="blue"/>
-    <x-stat-card label="Dataset" :value="number_format($datasets->count())" icon="📦" color="violet"/>
-    <x-stat-card label="Tahun Tersedia" :value="$years->count()" icon="📅" color="amber"/>
-</div>
+<x-source-widget-header icon="📊" title="Badan Pusat Statistik (BPS)" subtitle="Observasi statistik resmi dari BPS Morowali" key="bps" accent="blue">
 
-<x-card title="Filter" subtitle="Pilih dataset, indikator, dan tahun" icon="🔍">
+@include('partials.source-insights', ['insights' => $insights])
+
+<x-card title="Filter" subtitle="Pilih dataset dan tahun" icon="🔍">
     <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <select name="dataset_id" class="rounded-xl border border-gray-300 text-[12px] px-3 py-2.5 bg-white focus:ring-2 focus:ring-violet-200">
             <option value="">Semua Dataset</option>
@@ -31,6 +32,27 @@
         </div>
     </form>
 </x-card>
+
+<div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+    <x-stat-card label="Total Observasi" :value="number_format($observations?->total() ?? 0)" icon="📊" color="blue"/>
+    <x-stat-card label="Dataset" :value="number_format($datasets->count())" icon="📦" color="violet"/>
+    <x-stat-card label="Tahun Tersedia" :value="$years->count()" icon="📅" color="amber"/>
+</div>
+
+@if (count($byYear['data']) > 0 || count($datasetBreakdown['data']) > 0)
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        @if (count($byYear['data']) > 0)
+            <x-card title="Observasi per Tahun" subtitle="Jumlah observasi yang tersimpan" icon="📈">
+                <div class="h-64"><canvas id="chart-bps-year"></canvas></div>
+            </x-card>
+        @endif
+        @if (count($datasetBreakdown['data']) > 0)
+            <x-card title="Komposisi per Dataset" subtitle="Distribusi observasi antar dataset" icon="🧩">
+                <div class="h-64"><canvas id="chart-bps-dataset"></canvas></div>
+            </x-card>
+        @endif
+    </div>
+@endif
 
 <x-card title="Data BPS" subtitle="Observasi statistik dari Badan Pusat Statistik" icon="📋" :padding="false">
     @if ($observations?->isEmpty())
@@ -71,3 +93,30 @@
         @endif
     @endif
 </x-card>
+
+</x-source-widget-header>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const palette = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4'];
+
+    const yearLabels = @json($byYear['labels'] ?? []);
+    const yearData = @json($byYear['data'] ?? []);
+    if (yearLabels.length > 0 && document.getElementById('chart-bps-year')) {
+        window.Mjcc.charts.makeBar(document.getElementById('chart-bps-year'), yearLabels, [{
+            data: yearData,
+            label: 'Jumlah Observasi',
+            backgroundColor: 'rgba(59,130,246,0.8)',
+            borderWidth: 1,
+        }]);
+    }
+
+    const dsLabels = @json($datasetBreakdown['labels'] ?? []);
+    const dsData = @json($datasetBreakdown['data'] ?? []);
+    if (dsLabels.length > 0 && document.getElementById('chart-bps-dataset')) {
+        window.Mjcc.charts.makeDoughnut(document.getElementById('chart-bps-dataset'), dsLabels, dsData, palette.slice(0, dsLabels.length));
+    }
+});
+</script>
+@endpush
