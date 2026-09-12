@@ -358,7 +358,9 @@ Semua route di bawah middleware 'auth' (kecuali login/logout):
   resource /security/markets
   GET /health               Dashboard Kesehatan
   resource /health/facilities   (param: health_facility)
-  GET /maps                 Peta Gabungan
+  GET /maps                 Peta Gabungan (semua aset master + data publik)
+  GET /maps/data             JSON marker Peta Gabungan (param: kecamatan,
+                             refresh=1; cache command-center.maps.{id|all} 60s)
   resource /master/kecamatans
   resource /master/kelurahan   (names: master.kelurahans)
   resource /master/subjects
@@ -367,6 +369,29 @@ Semua route di bawah middleware 'auth' (kecuali login/logout):
   GET /audit                Log Aktivitas / audit (admin only via policy)
   GET/PUT /profile          (profil)
   PUT /profile/password     (ganti password)
+
+Peta Gabungan (MapService::combined) memuat SEMUA layer data master + data
+publik dalam satu payload `{markers, kecamatans, riskMap}`:
+  Master  : school, polsek, kelurahan, market (pasar), poskamling,
+            tipkamtikmas, health_facility — hanya baris ber-lat/lng.
+  Publik  :
+    - external_data      : SatuData/ATS/Dapodik — 1 marker per
+                           (kecamatan × sektor), popup jumlah dataset & rekor.
+    - disaster_event     : kejadian bencana SITABA (sektor kebencanaan).
+    - bps_observation    : ringkasan statistik BPS di centroid Kabupaten.
+    - apbd_record        : ringkasan anggaran APBD di centroid Kabupaten.
+    - komoditas SP2KP    : dirangkum ke marker pasar (jumlah varian terbaru,
+                           komoditas naik/turun tertinggi, tanggal update).
+    - IRBI               : bukan marker; overlay choropleth dari payload
+                           `riskMap` (region_code -> {name, index, level,
+                           hazard} tahun terbaru, indeks tertinggi per kab),
+                           dirender di frontend saat sektor Kebencanaan
+                           dipilih (fetch public/geo/sulteng-kabupaten.geojson
+                           + createRiskChoropleth dengan options.map).
+  Sektor map: pendidikan, ketertiban, kesehatan, KEBENCANAAN, STATISTIK.
+  Tiap marker publik menyertakan sourceUrl (sumber asli) & detailUrl (halaman
+  Public Data). Endpoint /maps/data mendukung ?kecamatan= & ?refresh=1
+  (cache 60s).
 
 Resource tambahan tiap resource ber-SoftDeletes (Sekolah, Faskes, Kecamatan,
 Kelurahan, Pasar, Poskamling, Tipkamtikmas):
@@ -640,6 +665,9 @@ dijangkau, tanpa mengubah semantik dashboard:
                             createAtsBubbleMap, createRiskChoropleth)
     - kategori `responder` (sector 'ketertiban', warna biru #2563eb,
       emoji 🚓) untuk marker posisi petugas.
+    - kategori Peta Gabungan baru: `bencana` (sektor kebencanaan, merah
+      #dc2626, ⚠️), `data-publik-bps` (statistik #0891b2, 📈),
+      `data-publik-apbd` (statistik #7c3aed, 💰).
     - renderResponders(map, sender, responders, options): hapus layer lama,
       gambar marker petugas, bangun polyline biru putus-putus
       petugas->sender memakai OSRM (router.project-osrm.org,
@@ -667,6 +695,16 @@ dijangkau, tanpa mengubah semantik dashboard:
 
   Build: `npm run build` (produksi) / `npm run dev` (dev, hot reload).
   Jika perubahan frontend tidak terlihat, jalankan salah satu perintah di atas.
+
+  Publish sementara ke publik: `.\serve-public.ps1` di root (PowerShell 7).
+  Script: npm run build -> hapus sisa `public/hot` (agar aset memakai manifest
+  build, bukan dev server Vite) -> `php artisan serve --host=127.0.0.1
+  --port=<APP_URL>` -> `cloudflared tunnel --no-autoupdate --url
+  http://127.0.0.1:<port>` -> tampilkan URL https \*.trycloudflare.com (dibaca
+  dari stdout DAN stderr cloudflared), hentikan keduanya saat Ctrl+C.
+  HTTPS ke proxy dipercaya lewat `trustProxies(at: ['127.0.0.1','::1'])` di
+  bootstrap/app.php sehingga uri()/asset()/route() menghasilkan https dari
+  X-Forwarded-* tunnel (mengindari mixed-content aset http di halaman https).
 
 --------------------------------------------------------------------------------
 9.  VIEW & LAYOUT
@@ -725,6 +763,10 @@ dijangkau, tanpa mengubah semantik dashboard:
     tests/Feature/AlertTest.php          - isyarat sektor (pendidikan/
                                           kesehatan/ketertiban), dashboard render
     tests/Feature/MapDataTest.php        - JSON peta per sektor + peta gabungan
+                                          (termasuk marker bencana SITABA,
+                                          ringkasan SP2KP di pasar, BPS/APBD di
+                                          centroid, dan riskMap IRBI tahun
+                                          terbaru)
     tests/Feature/SearchTest.php         - pencarian lintas resource
     tests/Feature/DataFreshnessTest.php  - data deterministik, mencegah render
                                           yang berubah-ubah
@@ -778,7 +820,7 @@ dijangkau, tanpa mengubah semantik dashboard:
                                           verifikasi, pemulihan DO, bar jenjang,
                                           bubble map, ranking, insight)
     test yang lain: DataImport, DataScraper, DashboardRefresh
-    (353 test, 1565 assertion total)
+    (357 test, 1585 assertion total)
 
   Menjalankan:  php artisan test --compact
                 vendor/bin/pest
