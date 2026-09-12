@@ -1,0 +1,534 @@
+================================================================================
+ SPESIFIKASI APLIKASI FLUTTER - MJCC MOBILE & TABLET
+ (Morowali Juara Command Center)
+================================================================================
+ Revisi  : 1.0
+ Tanggal : 2026-09-12
+ Status  : DRAFT (menunggu persetujuan user)
+ Proyek  : MOROWALI JUARA COMMAND CENTER
+           (web = Laravel 13/PHP 8.5 di repo ini; Flutter = aplikasi BARU
+           yang meniru tampilan dan data website)
+
+--------------------------------------------------------------------------------
+I. TUJUAN & LINGKUP
+--------------------------------------------------------------------------------
+Cetak biru (blueprint) untuk membangun aplikasi Flutter (mobile & tablet)
+yang TAMPILAN dan DATANYA SERUPA dengan website MJCC.
+
+  * HANYA target mobile & tablet (bukan desktop wide-screen).
+  * UI berbahasa Indonesia.
+  * Semua data diambil real-time dari API Laravel yang SUDAH ADA (Bagian III).
+  * Penampilan mengikuti website: warna, bahasa, komponen, chart, peta.
+
+--------------------------------------------------------------------------------
+II. TARGET PLATFORM & BREAKPOINT
+--------------------------------------------------------------------------------
+  * Smartphone : iOS + Android, portrait (utama) + landscape.
+  * Tablet     : iPad + Android, portrait + landscape.
+  * Breakpoint (mengikuti Tailwind web):
+      - mobile : < 768px  -> satu layar, sidebar sebagai drawer off-canvas
+      - tablet : >= 768px -> sidebar tetap terlihat (seperti web desktop)
+  * Safe area: patuhi MediaQuery padding top/bottom (notch, home indicator).
+  * Tinggi konten responsif; ikuti aturan di Bagian XIV.
+
+--------------------------------------------------------------------------------
+III. SUMBER DATA - API LARAVEL
+--------------------------------------------------------------------------------
+Base URL  : {APP_URL}/api  (nilai dari .env app web; produksi pakai domain
+            resmi, contoh dev: https://<host>/api).
+Semua respons memakai ENVELOPE TERPADU (App\Http\Responses\ApiResponse):
+
+  sukses   : { "success": true, "message": "...", "data": ... }
+  list     : { "success": true, "message": "...", "data": [ ... ],
+               "meta": { current_page, last_page, per_page, total } }
+  error    : { "success": false, "message": "...", "errors": {...} }
+               (errors null bila tidak ada)
+  validasi : HTTP 422 + errors per-field seperti di atas.
+
+Auth: Laravel Sanctum bearer token. Kirim header:
+      Authorization: Bearer <token>
+Endpoint publik TIDAK butuh token; lainnya butuh token (auth:sanctum).
+
+DAFTAR ENDPOINT (dari routes/api.php; sinkronkan saat implementasi):
+
+  A. AUTH (publik, throttle)
+     POST /api/v1/register
+     POST /api/v1/login
+     POST /api/v1/email/verify
+     POST /api/v1/email/verification/resend
+
+  B. SESSION (token)
+     GET  /api/v1/me
+     POST /api/v1/logout
+
+  C. DASHBOARD (token) - semua menerima ?kecamatan_id= opsional
+     GET /api/v1/dashboard            -> overview (KPI + chart + tabel)
+     GET /api/v1/dashboard/education  -> sektor PENDIDIKAN
+     GET /api/v1/dashboard/security   -> sektor KETERTIBAN
+     GET /api/v1/dashboard/health     -> sektor KESEHATAN
+
+  D. PETA (token)
+     GET /api/v1/maps?sector=&type=&kecamatan_id=
+       -> { "markers":[...], "kecamatans":[{id,name}] }
+       marker: { id, type, sector, name, latitude, longitude, status,
+                 kecamatan, kelurahan }
+       type marker: school, polsek, tipkamtikmas, poskamling, market,
+                    health_facility
+       filter: sector = pendidikan|ketertiban|kesehatan; type di atas.
+
+  E. DATA PUBLIK (TERBUKA, tanpa token)
+     GET /api/v1/public/overview
+     GET /api/v1/public/schools(/{id})
+     GET /api/v1/public/health-facilities(/{id})
+     GET /api/v1/public/polseks(/{id})
+     GET /api/v1/public/poskamlings(/{id})
+     GET /api/v1/public/tipkamtikmas(/{id})
+     GET /api/v1/public/markets(/{id})
+     GET /api/v1/public/kelurahans(/{id})
+
+  F. DATA PUBLIK MULTI-SUMBER (TERBUKA)
+     GET /api/v1/public-data/categories         -> daftar kategori
+     GET /api/v1/public-data/sources            -> daftar sumber (BPS, APBD, dll)
+     GET /api/v1/public-data/sources/{source}   -> isi/indikator per sumber
+
+  G. SOS / DARURAT (token)
+     POST /api/v1/sos                             -> buat SOS
+     GET  /api/v1/sos                             -> inbox (berizin) / milik sendiri
+     GET  /api/v1/sos/my-open                     -> SOS saya yang masih terbuka
+     GET  /api/v1/sos/active-count                -> jumlah SOS aktif
+     GET  /api/v1/sos/active-incidents            -> insiden aktif (untuk peta)
+     GET  /api/v1/sos/{sos}                       -> detail
+     POST /api/v1/sos/{sos}/acknowledge           -> petugas menerima (pesan wajib)
+     POST /api/v1/sos/{sos}/accept                -> petugas ambil alih
+     POST /api/v1/sos/{sos}/on-the-way            -> menuju lokasi
+     POST /api/v1/sos/{sos}/arrived               -> tiba di lokasi
+     POST /api/v1/sos/{sos}/respond               -> jawab + pesan (menuju lokasi)
+     POST /api/v1/sos/{sos}/resolve               -> selesaikan + pesan
+     POST /api/v1/sos/{sos}/cancel                -> batalkan (oleh pemilik)
+     POST /api/v1/sos/{sos}/location              -> perbarui lokasi pelapor
+     GET  /api/v1/sos/{sos}/responder-locations   -> posisi petugas (real-time)
+
+     Field buat SOS (StoreSosAlertRequest):
+       latitude (wajib), longitude (wajib), accuracy (0-1000, opsional),
+       category (general|medical|fire|police, opsional),
+       message   (max 500, opsional)
+
+  H. NOTIFIKASI (token)
+     GET  /api/v1/notifications
+     POST /api/v1/notifications/{notification}/read
+
+  I. MASTER DATA / CRUD (token) - pola RESTful standar:
+     list+search, store, show, update, destroy, trash, restore, force.
+        /api/v1/kecamatans        (+trash /{id}/restore /{id}/force
+                                     /{kecamatan}/kelurahans)
+        /api/v1/kelurahans        (+trash/restore/force)
+        /api/v1/subjects
+        /api/v1/schools           (+trash/restore/force)
+        /api/v1/polseks
+        /api/v1/tipkamtikmas      (+trash/restore/force)
+        /api/v1/poskamlings       (+trash/restore/force)
+        /api/v1/markets           (+trash/restore/force)
+        /api/v1/health/facilities (+trash/restore/force)
+     Pendukung web (opsional): GET /api/kelurahans/by-kecamatan
+
+  J. USERS, AUDIT, PROFILE (token; users & audit khusus admin)
+     GET/POST/PUT/DELETE /api/v1/users + POST /api/v1/users/{user}/verify-email
+     GET  /api/v1/audit
+     GET  /api/v1/profile
+     PUT  /api/v1/profile
+     PUT  /api/v1/profile/password
+
+--------------------------------------------------------------------------------
+IV. TEMA & DESAIN SISTEM
+--------------------------------------------------------------------------------
+Identitas visual sama dengan web.
+
+WARNA SEMANTIK (hex Tailwind, gunakan persis):
+  hijau MJCC   #047857 (emerald-700), aksen #059669 (emerald-600)
+  hijau muda   #10b981 (emerald-500), bg #d1fae5 / #ecfdf5
+  biru         #2563eb / #3b82f6, bg #dbeafe
+  merah/danger #dc2626, bg #fee2e2
+  amber        #f59e0b, bg #fef3c7
+  ungu         #7c3aed, bg #ede9fe
+  teal         #14b8a6, #0d9488
+  netral       #f9fafb #f3f4f6 #e5e7eb #9ca3af #6b7280 #374151 #111827
+
+SIDEBAR (khas MJCC):
+  Latar gradien vertikal #111827 -> #111827 -> #047857
+  (web: bg-gradient-to-b from-gray-900 via-gray-900 to-emerald-700)
+  Menu default abu #9ca3af; aktif hijau terang #34d399 dengan latar
+  rgba(16,185,129,0.15) + garis kiri emerald.
+  Logo: "MJCC" + subjudul "Morowali Juara".
+
+FONT:
+  Keluarga "Instrument Sans" (fallback platform sans-serif).
+  Ukuran: judul halaman ~20-24px tebal, judul kartu ~15-16px semi-bold,
+  angka KPI ~24-32px extra-bold, badan ~14px, label ~12px.
+
+SPASI / RADIUS / SHADOW:
+  - gap antarkartu 12-16px, padding kartu 16px
+  - radius kartu 12px, tombol 8-10px, badge pil (high radius)
+  - shadow kartu lembut, mis. BoxShadow(blur 12, offset.y 4, alpha 0.06)
+
+--------------------------------------------------------------------------------
+V. NAVIGASI & LAYOUT RESPONSIF
+--------------------------------------------------------------------------------
+STRUKTUR UMUM (mirip layouts/app.blade.php):
+  +---------------------------------------------------------+
+  | Header (2 baris): brand | lonceng alert | SOS | user     |
+  | baris ke-2: judul halaman + aksi/search                  |
+  +---------------------------------------------------------+
+  | Isi (scroll)                  |  Sidebar (menu navigasi) |
+  +---------------------------------------------------------+
+
+MOBILE (<768px):
+  - Sidebar OFF-CANVAS (Drawer). Buka lewat hamburger di header.
+  - Saat terbuka: overlay gelap (alpha 0.5) menutupi konten;
+    TAP OVERLAY menutup drawer (interaksi penting).
+  - PENTING (dirangkum dari bug web): jangan sampai area peta menimpa
+    drawer/overlay. Di Flutter pastikan drawer berada dalam Stack paling
+    atas dan widget peta tidak keluar dari wadahnya.
+
+TABLET (>=768px):
+  - Sidebar PERMANEN di kiri (seperti web desktop).
+  - Konten ber-padding; grid kartu 2-3 kolom.
+
+MENU NAVIGASI (urut sesuai sidebar web):
+  1. Dashboard (Beranda)
+  2. Peta Gabungan (pilih sektor: Pendidikan/Ketertiban/Kesehatan)
+  3. Dashboard Pendidikan
+  4. Dashboard Ketertiban
+  5. Dashboard Kesehatan
+  6. SOS / Darurat
+  7. Command Alerts
+  8. Intelijen Kecamatan
+  9. Data Publik
+  10. Pencarian Intel
+  ----
+  11. Master Data (Sekolah, Polsek, Tipkamtikmas, Poskamling, Pasar,
+      Fasilitas Kesehatan, Kecamatan, Kelurahan, Subjek Data)
+  12. Manajemen Pengguna (admin)
+  13. Audit Log (admin)
+  14. Profil Saya / Pengaturan
+
+Mobile: tambahkan BottomNavigation 4-5 item utama (Dashboard, Peta, SOS,
+Alerts, Lainnya/More) + Drawer untuk menu lengkap. Tablet: sidebar permanen.
+
+--------------------------------------------------------------------------------
+VI. KOMPONEN UI DASAR
+--------------------------------------------------------------------------------
+1. STAT_CARD (kartu KPI) - dipakai semua dashboard sektor:
+     ikon/emoji pemisah warna, label, nilai utama (angka besar), dan baris
+     penunjuk (trend/sub). Warna ikon per sektor:
+       Pendidikan #2563eb | Ketertiban #7c3aed | Kesehatan #10b981
+2. KPI_GRID         - kisi kartu statistik (mobile 2 kolom, tablet 3-4 kolom).
+3. KARTU_KONTEN     - wadah putih: header (ikon kecil + judul tebal) + konten.
+4. METRIC_COMPARISON- kartu 3 metrik berlabel (mis. jumlah anak, jumlah
+                       sekolah, rasio guru:siswa) dalam 3 kolom.
+5. CHART_CARD       - kartu berisi judul + chart (Bagian VII).
+6. FILTER_BAR       - baris chip/dropdown filter (kecamatan, jenis).
+                       Di mobile full-width & bisa scroll horizontal.
+7. TABEL            - scroll horizontal di dalam kartu; jangan potong kolom.
+8. PAGE_TITLE       - judul halaman + aksi (Tambah, Refresh, Export).
+9. BADGE_STATUS     - pil berwarna; hijau (#d1fae5/#047857) untuk
+                       Aktif/Ver/Rendah/Resolved; amber/biru untuk
+                       Sedang/Diterima/berjalan; merah untuk Tinggi/Tidak
+                       aktif/Canceled (lihat tabel status SOS Bagian XII).
+10. TREND_INDICATOR - panah naik/turun + angka "vs periode lalu".
+11. EMPTY_STATE     - teks "Belum ada data" abu-abu.
+12. ERROR_STATE     - pesan + tombol "Coba Lagi" (retry).
+13. PAGINATION      - kontrol halaman (pakai meta dari envelope API).
+14. TOMBOL          - primer #047857/putih, sekunder outline abu, danger
+                       merah; FAB untuk SOS.
+15. INPUT/SELECT    - border ringan; di mobile PASTIKAN font >=16px
+                       (cara iOS tidak auto-zoom saat fokus).
+16. SIDEBAR_MENU    - item ikon+label; submenu expandable (Master Data).
+17. SWIPE_REFRESH   - pull-to-refresh pada halaman data/dashboard.
+18. SKELETON/SHIMMER saat loading awal (nice-to-have).
+
+--------------------------------------------------------------------------------
+VII. GRAFIK (Chart.js -> fl_chart)
+--------------------------------------------------------------------------------
+PALETTE WAJIB (dari charts.js):
+  ['#10b981','#059669','#047857','#3b82f6','#2563eb','#1d4ed8',
+   '#6ee7b7','#34d399','#a7f3d0','#60a5fa']
+
+JENIS & PEMAKAIAN:
+  - BAR vertikal    : perbandingan antar kategori (per kecamatan).
+  - BAR stacked     : komposisi berlapis (mis. poskamling aktif vs total).
+  - BAR horizontal  : daftar panjang "Top 5/10 kecamatan".
+  - DOUGHNUT        : komposisi/proporsi (komposisi fasilitas kesehatan).
+  - PIE             : proporsi sederhana.
+  - POLAR           : sebaran multi-dimensi.
+  ATURAN:
+  - Web memakai maintainAspectRatio:false -> di Flutter beri TINGGI TETAP
+    pada wadah chart (~220-280px), lebar mengisi kartu.
+  - Angka diformat pemisah ribuan id-ID: 1.234
+  - Legenda kecil di bawah grafik.
+
+PEMETAAN PER HALAMAN:
+  Overview (/dashboard):
+    comparison              -> BAR bertumpuk (sekolah vs fasilitas, dll)
+    infra_composition       -> DOUGHNUT komposisi infrastruktur
+    student_chart           -> BAR siswa per jenjang
+    health_workforce_chart  -> BAR tenaga kesehatan
+    top_schools / top_poskamling / top_health -> BAR horizontal Top 5
+  Pendidikan (/dashboard/education):
+    student_per_kecamatan   -> BAR siswa per kecamatan
+    teacher_ratio           -> BAR/LINE rasio guru:siswa
+    facility_progress       -> BAR progres fasilitas (stacked)
+    table                   -> TABEL
+  Ketertiban (/dashboard/security):
+    compare_chart           -> BAR perbandingan (tipkamtikmas vs poskamling)
+    poskamling_distribution -> BAR stacked/PIE per kecamatan
+    kelurahan_per_kecamatan -> BAR kelurahan per kecamatan
+    polseks                 -> daftar KARTU polsek
+  Kesehatan (/dashboard/health):
+    workforce_per_kecamatan -> BAR tenaga kesehatan per kecamatan
+    facility_proportion     -> DOUGHNUT/PIE proporsi jenis fasilitas
+    capacity_per_kecamatan  -> BAR kapasitas per kecamatan
+    table                   -> TABEL fasilitas
+
+--------------------------------------------------------------------------------
+VIII. TABEL
+--------------------------------------------------------------------------------
+  - Dashboard Pendidikan : tabel sekolah per kecamatan (jumlah sekolah,
+      siswa, guru, rasio) -> dari /dashboard/education (field `table`).
+  - Dashboard Kesehatan  : tabel fasilitas per kecamatan -> dari
+      /dashboard/health (field `table`).
+  - Data master          : daftar CRUD (nama, kecamatan, status) + aksi
+      Edit/Hapus/Restore.
+  - Users & Audit        : daftar dari /users dan /audit.
+  Perilaku: scroll horizontal di dalam kartu; header ringan; baris kosong
+  -> EMPTY_STATE.
+
+--------------------------------------------------------------------------------
+IX. PETA (Leaflet -> flutter_map / google_maps)
+--------------------------------------------------------------------------------
+Rekomendasi: package `flutter_map` (TileLayer OSM/Mapbox) atau
+`google_maps_flutter`.
+
+IX.1 MARKER LINGKARAN WARNA + EMOJI (divIcon web):
+  Lingkaran warna solid, border putih 2px, shadow lembut, emoji ~52%
+  ukuran lingkaran di tengahnya. WARNA & EMOJI (wajib sesuai maps.js):
+
+    SD                #10b981  emoji gakko      (pendidikan)
+    SMP               #2563eb  emoji gakko      (pendidikan)
+    polsek            #2563eb  emoji polisi     (ketertiban)
+    kelurahan         #059669  emoji rumah      (ketertiban)
+    pasar             #f59e0b  emoji toko       (ketertiban)
+    poskamling        #f97316  emoji perisai    (ketertiban)
+    tipkamtikmas      #14b8a6  emoji helm       (ketertiban)
+    Puskesmas         #10b981  emoji rumah sakit(kesehatan)
+    Pustu             #6366f1  emoji klinik     (kesehatan)
+    Rumah Sakit       #dc2626  emoji hospital   (kesehatan)
+    Posyandu          #3b82f6  emoji bayi       (kesehatan)
+    sos               #dc2626  emoji siren      (darurat)
+    responder         #2563eb  emoji polisi     (petugas)
+    data-publik-pendidikan #0d9488 emoji chart (data publik)
+    data-publik-kesehatan   #f97316 emoji chart
+    data-publik-keamanan    #7c3aed emoji chart
+    bencana           #dc2626  emoji warning
+    data-publik-bps   #0891b2  emoji naik Chart
+    data-publik-apbd  #7c3aed  emoji uang
+    default           #64748b  emoji pin
+
+  Catatan: API maps mengembalikan type = school, polsek, tipkamtikmas,
+  poskamling, market, health_facility. Map kan ke label UI publik
+  (SD/SMP dst) sesuai nama/level data.
+
+IX.2 POPUP MARKER:
+  Nama (tebal #047857), badge jenis (teks putih, bg warna kategori),
+  detail kecamatan/kelurahan/status. Data publik: baris "Terakhir: <waktu>"
+  + tombol "Data Sumber" dan "Lihat Detail".
+
+IX.3 KLUSTER: gabungkan marker dekat menjadi kluster angka; ketuk -> zoom in.
+
+IX.4 BUBBLE MAP "SEBARAN ATS" (anak tidak sekolah):
+  Ukuran lingkaran proporsional thd jumlah ATS. WARNA TIER:
+    Tinggi #dc2626 | Sedang #f59e0b | Rendah #10b981
+  Popup: "Total ATS: <angka>" (format 1.234), badge "Verifikasi <pct>%"
+  (bg #d1fae5 teks #047857) dan "Kembali <pct>%"
+  (bg #dbeafe teks #1d4ed8). Ketuk titik = pilih (border hitam #0f172a).
+  Sumber: JSON statik/geoJSON BPS (belum ada endpoint API -> siapkan
+  titik integrasi).
+
+IX.5 CHOROPLETH "IRBI / RAHASIA" (indeks risiko):
+  Isi polygon per kecamatan berdasarkan level:
+    Tinggi #dc2626 | Sedang #f59e0b | Rendah #10b981 | tanpa data #e5e7eb
+    border #334155 bobot 1, fillOpacity 0.7 (kosong 0.65, dash 3-4).
+  Legenda kotak kecil; popup nama + badge level + bahaya (opsional).
+  Sumber: field `riskMap` pada endpoint /maps (level per kecamatan).
+
+IX.6 INTERAKSI:
+  - Reset tampilan (zoom ke seluruh area) saat filter berubah.
+  - Filter: sector + type + kecamatan (dari /api/v1/maps).
+  - Rute opsional warna #2563eb.
+  - SETELAH ROTASI/RESIZE: refresh ukuran peta (di Flutter cukup
+    LayoutBuilder + pertahankan koordinat tengah; jangan peta blank).
+
+IX.7 INGAT BUG WEB:
+  Di web, z-index Leaflet (hingga 700) bocor keluar wadah dan sempat
+  menutupi sidebar; diperbaiki dengan isolation:isolate. Di Flutter
+  jangan render peta melampaui wadah Stack-nya; drawer/overlay harus
+  berada paling atas.
+
+--------------------------------------------------------------------------------
+X. HALAMAN & ALUR
+--------------------------------------------------------------------------------
+X.1 LOGIN / REGISTRASI / VERIFIKASI EMAIL
+  - Layar login: brand MJCC, email + password, tombol "Masuk".
+  - Setelah login panggil GET /me; role menentukan menu.
+  - Registrasi + verifikasi email (POST /email/verify).
+  - Simpan token aman (flutter_secure_storage). Auto-logout saat 401.
+
+X.2 DASHBOARD (Beranda) - GET /dashboard
+  - KPI grid (stats): sekolah, tipkamtikmas, fasilitas kesehatan,
+    kelurahan, poskamling, pasar.
+  - Kartu: comparison (bar), infra_composition (doughnut),
+    student_chart (bar), health_workforce_chart (bar).
+  - Top 5 horizontal: top_schools, top_poskamling, top_health.
+  - Tabel per kecamatan (per_kecamatan): sekolah, tipkamtikmas,
+    fasilitas kesehatan, kelurahan, poskamling, pasar.
+  - Filter kecamatan opsional; auto-refresh 60 dtk + pull-to-refresh.
+
+X.3 DASHBOARD PENDIDIKAN - GET /dashboard/education
+  - KPI: jumlah siswa, jumlah sekolah, rasio guru:siswa.
+  - Charts: student_per_kecamatan, teacher_ratio, facility_progress.
+  - Tabel sekolah per kecamatan. Filter kecamatan.
+
+X.4 DASHBOARD KETERTIBAN - GET /dashboard/security
+  - KPI: tipkamtikmas, poskamling, polsek, pasar.
+  - Charts: compare_chart, poskamling_distribution,
+    kelurahan_per_kecamatan; daftar polseks. Filter kecamatan.
+  - Cek halaman web untuk label ringkasan khusus pasar (SP2KP).
+
+X.5 DASHBOARD KESEHATAN - GET /dashboard/health
+  - KPI: tenaga kesehatan, jumlah fasilitas, rasio.
+  - Charts: workforce_per_kecamatan, facility_proportion,
+    capacity_per_kecamatan; tabel fasilitas. Filter kecamatan.
+
+X.6 PETA GABUNGAN - GET /maps + SOS live
+  - Filter sektor (Semua/Pendidikan/Ketertiban/Kesehatan) + jenis marker.
+  - Overlay opsional: bubble ATS, choropleth IRBI, marker SOS aktif +
+    posisi petugas (polling 15-20 dtk).
+  - Popup sesuai IX.2.
+
+X.7 SOS / DARURAT - rinci di Bagian XII.
+X.8 COMMAND ALERTS - GET /notifications
+  - Daftar notifikasi (pesan + waktu); tandai dibaca
+    (POST /notifications/{id}/read). Ikon lonceng di header dengan badge
+    jumlah belum dibaca; polling 15-20 dtk saat app aktif.
+
+X.9 INTELIJEN KECAMATAN
+  - Pilih kecamatan -> rincian kelurahan, poskamling, tipkamtikmas,
+    sekolah, fasilitas kesehatan, pasar (pakai API master + filter
+    kecamatan / /kecamatans/{id}/kelurahans) + peta mini marker sektor.
+
+X.10 DATA PUBLIK (multi-sumber)
+  - Pilih kategori (categories) -> pilih sumber (sources) ->
+    detail sumber (chart + poin indikator, tautan "Data Sumber").
+  - Halaman entitas data publik TANPA login dari /api/v1/public/*
+    (daftar + detail + popup marker IX.2).
+
+X.11 PENCARIAN INTEL
+  - Kotak pencarian global memfilter entitas (schools, polseks,
+    fasilitas, pasar, dll) via param `search`; hasil digabung; ketuk
+    hasil -> detail.
+
+X.12 MASTER DATA (CRUD) - admin/operator berizin
+  Pola per modul: LIST -> FORM buat -> DETAIL -> FORM edit -> Hapus
+  (soft) -> TRASH (restore / force hapus). Modul: Sekolah (schools),
+  Polsek, Tipkamtikmas, Poskamling, Pasar (markets), Fasilitas Kesehatan
+  (health/facilities), Kecamatan, Kelurahan, Subjek Data.
+  Dropdown kecamatan/kelurahan (kelurahans/by-kecamatan). Konfirmasi
+  dialog sebelum hapus/restore/force.
+
+X.13 MANAJEMEN PENGGUNA (admin) - /users: daftar, buat, edit, hapus,
+  verifikasi email manual.
+X.14 AUDIT LOG (admin) - /audit: tabel aktivitas (aktor, aksi, deskripsi,
+  waktu) + filter.
+X.15 PROFIL - /profile: lihat/edit nama & email; ganti password
+  (/profile/password).
+
+--------------------------------------------------------------------------------
+XI. AUTORISASI & ROLE (dari policy web)
+--------------------------------------------------------------------------------
+  - viewer   : dashboard publik, SOS milik sendiri, profil.
+  - operator : master data + kelola SOS (inbox semua).
+  - admin    : users, audit, + semua di atas.
+  Menu/aksi Flutter disembunyikan/dinonaktifkan sesuai `role` pada GET /me.
+  Backend tetap otoritas final (policy) - Flutter hanya sisi UX.
+
+--------------------------------------------------------------------------------
+XII. ALUR SOS & STATUS (polling 15-20 dtk)
+--------------------------------------------------------------------------------
+STATUS (urutan timeline web):
+  active -> acknowledged -> responding -> accepted -> on_the_way
+       -> arrived -> resolved      (atau canceled oleh pemilik)
+
+  UI per status:
+    active/pending -> merah "Active" (paling atas)
+    acknowledged   -> amber "Diterima (pesan)"
+    responding     -> "Sedang menuju" (biru/teal)
+    accepted       -> ungu/biru "Diambil petugas"
+    on_the_way     -> biru
+    arrived        -> hijau teal "Tiba di lokasi"
+    resolved       -> hijau "Selesai" (tampilkan waktu)
+    canceled       -> abu-abu/merah
+
+  AKSI (muncul sesuai state & role):
+    acknowledge : petugas tulis pesan (wajib) -> responding
+    respond     : petugas tulis pesan -> "menuju lokasi"
+    accept      : petugas ambil alih
+    on-the-way / arrived : majukan status
+    resolve     : petugas selesaikan + pesan
+    cancel      : pemilik SOS membatalkan
+
+  LOKASI REAL-TIME:
+    - Pelapor : POST /sos/{sos}/location saat GPS berubah
+                (latitude, longitude, accuracy).
+    - Petugas : GET /sos/{sos}/responder-locations (posisi petugas
+                di peta, polling 15-20 dtk).
+
+  Field SOS (SosAlertResource) yang dipakai UI:
+    id, user{id,name,role}, latitude, longitude, accuracy, status,
+    category, category_label, message, response_message,
+    responded_by(+_user{id,name}), responded_at,
+    resolved_by(+_user), resolved_at,
+    accepted_by(+_user), accepted_at,
+    created_at, updated_at, is_owner, can_manage.
+
+--------------------------------------------------------------------------------
+XIII. POLA REAL-TIME & PENGUMPULAN DATA
+--------------------------------------------------------------------------------
+  - Timer.periodic:
+      SOS aktif / incidents / my-open   : 15-20 dtk
+      notifikasi belum dibaca           : 15-20 dtk
+      dashboard                         : 60 dtk (+ pull-to-refresh)
+  - Jeda polling saat app di background (AppLifecycleState); lanjutkan
+    saat resume dengan refresh otomatis.
+  - Semua request pakai envelop ApiResponse; tangani 401 secara global
+    (logout -> kembali ke login).
+  - Simpan data lokal ringan (Hive/storage) untuk offline dasar (opsional).
+
+--------------------------------------------------------------------------------
+XIV. ATURAN RESPONSIF (rangkuman perbaikan web)
+--------------------------------------------------------------------------------
+  [P1] Input/search font >=16px agar iOS tidak auto-zoom.
+  [P2] Tinggi konten responsif (referensi web):
+       - peta gabungan : mobile ~380px -> tablet 520px -> besar 640px
+       - peta sektor/SITABA/IRBI : ~300px -> 440px
+       - peta ATS : ~300px -> 420px
+       - wadah chart : tinggi tetap ~220-280px (maintainAspectRatio false)
+  [P3] Tabel scroll horizontal di dalam kartu, jangan potong kolom.
+  [P4] Safe area di header/bottom nav (dvh setara MediaQuery padding).
+  [P5] Drawer + overlay tap-to-close (mobile).
+  [P6] Setelah rotasi tablet: refresh ukuran peta & chart agar tidak blank
+       (LayoutBuilder / fitBounds / didChangeMetrics).
+  [P7] Peta tidak boleh menimpa elemen lain (lihat II/IX.7).
+  [P8] Footer "MJCC (c) 2026".
+
+================================================================================
+AKHIR DOKUMEN
+================================================================================
