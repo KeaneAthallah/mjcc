@@ -2,6 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\ApbdRecord;
+use App\Models\BpsObservation;
+use App\Models\CommodityPrice;
+use App\Models\DisasterEvent;
+use App\Models\DisasterRiskIndex;
 use App\Models\ExternalData;
 use App\Models\HealthFacility;
 use App\Models\Kecamatan;
@@ -41,7 +46,7 @@ class MapService
      * kecamatan. Results are cached briefly; pass `$force = true` (or the
      * `refresh=1` query parameter on the data endpoint) to bypass.
      *
-     * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>}
+     * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>, riskMap: array<string, array<string, mixed>>}
      */
     public function combined(?int $kecamatanId = null, bool $force = false): array
     {
@@ -59,11 +64,12 @@ class MapService
     }
 
     /**
-     * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>}
+     * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>, riskMap: array<string, array<string, mixed>>}
      */
     private function buildPayload(?int $kecamatanId = null): array
     {
-        $filter = fn ($q) => $kecamatanId ? $q->where('kecamatan_id', $kecamatanId) : $q;
+        $resolver = app(LocationResolver::class);
+        $commoditySummaries = $this->commoditySummariesByMarket();
 
         $markers = collect();
 
@@ -120,7 +126,17 @@ class MapService
             ->whereNotNull('longitude')
             ->when($kecamatanId, fn ($q) => $q->where('kecamatan_id', $kecamatanId))
             ->get()
-            ->each(function (Market $m) use (&$markers) {
+            ->each(function (Market $m) use (&$markers, $commoditySummaries) {
+                $summary = $commoditySummaries->get($m->name);
+                $details = [];
+
+                if ($summary !== null) {
+                    $details['Komoditas SP2KP'] = $summary['count'];
+                    $details['Harga Update'] = $summary['date'];
+                    $details['Naik Tertinggi'] = $summary['riser'];
+                    $details['Turun Terendah'] = $summary['faller'];
+                }
+
                 $markers->push([
                     'name' => $m->name,
                     'id' => $m->id,
@@ -130,7 +146,9 @@ class MapService
                     'latitude' => (float) $m->latitude,
                     'longitude' => (float) $m->longitude,
                     'kecamatan' => $m->kecamatan?->name,
-                    'details' => [],
+                    'details' => array_filter($details, fn ($v) => $v !== null),
+                    'detailUrl' => $summary !== null ? route('public-data.show', 'sp2kp') : null,
+                    'lastSeen' => $summary['date'] ?? null,
                 ]);
             });
 
@@ -216,8 +234,16 @@ class MapService
                 ]);
             });
 
+        // Data Publik (bencana terkini SITABA + indeks risiko IRBI).
+        $this->pushDisasterEvents($markers, $kecamatanId, $resolver);
+
+        // Data Publik region-level (BPS & APBD) di centroid kabupaten.
+        $this->pushRegionPublicData($markers, $kecamatanId, $resolver);
+
         // Data Publik (Satu Data Morowali): locations aggregated per sector.
-        $externalKecamatans = $this->pushExternalData($markers, $kecamatanId, app(LocationResolver::class));
+        $externalKecamatans = $this->pushExternalData($markers, $kecamatanId, $resolver);
+
+        $riskMap = $this->riskMap();
 
         $kecamatanNames = collect();
 
@@ -234,7 +260,180 @@ class MapService
         return [
             'markers' => $markers,
             'kecamatans' => $kecamatanNames,
+            'riskMap' => $riskMap,
         ];
+    }
+
+    /**
+     * Latest SP2KP commodity snapshot per market, summarised for the market
+     * (pasar) marker popup.
+     *
+     * @return Collection<string, array{count: int, date: string|null, riser: string|null, faller: string|null}>
+     */
+    private function commoditySummariesByMarket(): Collection
+    {
+        return CommodityPrice::query()
+            ->orderByDesc('record_date')
+            ->get(['market', 'commodity', 'percentage_change', 'record_date'])
+            ->filter(fn (CommodityPrice $price) => filled($price->market))
+            ->groupBy('market')
+            ->map(function (Collection $rows): array {
+                $rows = $rows->sortByDesc('record_date')->values();
+                $latestDate = $rows->first()->record_date;
+                $latest = $rows->filter(fn (CommodityPrice $price) => $price->record_date?->equalTo($latestDate));
+
+                $riser = $latest->filter(fn (CommodityPrice $price) => $price->percentage_change > 0)
+                    ->sortByDesc('percentage_change')->first();
+                $faller = $latest->filter(fn (CommodityPrice $price) => $price->percentage_change < 0)
+                    ->sortBy('percentage_change')->first();
+
+                return [
+                    'count' => $latest->count(),
+                    'date' => $latestDate?->format('Y-m-d'),
+                    'riser' => $riser ? $riser->commodity.' ('.$riser->formattedPercentageChange().')' : null,
+                    'faller' => $faller ? $faller->commodity.' ('.$faller->formattedPercentageChange().')' : null,
+                ];
+            });
+    }
+
+    /**
+     * SITABA disaster events as point markers under the "kebencanaan" sector.
+     *
+     * @param  Collection<int, array<string, mixed>>  $markers
+     */
+    private function pushDisasterEvents(Collection $markers, ?int $kecamatanId, LocationResolver $resolver): void
+    {
+        $target = $kecamatanId !== null ? Kecamatan::whereKey($kecamatanId)->value('name') : null;
+
+        DisasterEvent::query()
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->orderByDesc('event_date')
+            ->get()
+            ->each(function (DisasterEvent $event) use ($markers, $target, $resolver): void {
+                $kecamatan = $resolver->canonicalName($event->village ?? $event->sub_district ?? $event->district);
+
+                if ($target !== null && $kecamatan !== $target) {
+                    return;
+                }
+
+                $markers->push([
+                    'name' => $event->disaster_name ?: $event->disaster_type,
+                    'id' => $event->id,
+                    'slug' => 'disaster_event',
+                    'sector' => 'kebencanaan',
+                    'category' => 'bencana',
+                    'latitude' => (float) $event->latitude,
+                    'longitude' => (float) $event->longitude,
+                    'kecamatan' => $kecamatan,
+                    'details' => array_filter([
+                        'Jenis' => $event->disaster_type,
+                        'Tanggal' => $event->event_date?->format('d M Y'),
+                        'Wilayah' => $event->district,
+                        'Terdampak' => $event->affected_population,
+                        'Status' => $event->status ? ucfirst($event->status) : null,
+                    ], fn ($v) => $v !== null),
+                    'sourceUrl' => $event->source_url,
+                    'detailUrl' => route('public-data.show', 'sitaba'),
+                    'lastSeen' => $event->scraped_at?->format('Y-m-d H:i'),
+                ]);
+            });
+    }
+
+    /**
+     * Region-level public data (BPS statistics & APBD) anchored to the
+     * kabupaten centroid, since these datasets carry no point geometry.
+     *
+     * @param  Collection<int, array<string, mixed>>  $markers
+     */
+    private function pushRegionPublicData(Collection $markers, ?int $kecamatanId, LocationResolver $resolver): void
+    {
+        if ($kecamatanId !== null) {
+            return;
+        }
+
+        $centroid = $resolver->resolve('Kabupaten Morowali');
+
+        if ($centroid === null) {
+            return;
+        }
+
+        $observations = BpsObservation::query()->get(['bps_dataset_id', 'indicator', 'year', 'fetched_at']);
+
+        if ($observations->isNotEmpty()) {
+            $markers->push([
+                'name' => 'Statistik BPS Morowali',
+                'id' => null,
+                'slug' => 'bps_observation',
+                'sector' => 'statistik',
+                'category' => 'data-publik-bps',
+                'latitude' => $centroid['latitude'],
+                'longitude' => $centroid['longitude'],
+                'kecamatan' => 'Kabupaten Morowali',
+                'details' => [
+                    'Indikator' => $observations->pluck('indicator')->unique()->count(),
+                    'Dataset' => $observations->pluck('bps_dataset_id')->unique()->count(),
+                    'Tahun Terbaru' => $observations->max('year'),
+                ],
+                'detailUrl' => route('public-data.show', 'bps'),
+                'lastSeen' => $observations->max('fetched_at')?->format('Y-m-d H:i'),
+            ]);
+        }
+
+        $apbd = ApbdRecord::query()->get(['indicator', 'year', 'percentage', 'scraped_at']);
+
+        if ($apbd->isNotEmpty()) {
+            $markers->push([
+                'name' => 'Anggaran APBD Morowali',
+                'id' => null,
+                'slug' => 'apbd_record',
+                'sector' => 'statistik',
+                'category' => 'data-publik-apbd',
+                'latitude' => $centroid['latitude'],
+                'longitude' => $centroid['longitude'],
+                'kecamatan' => 'Kabupaten Morowali',
+                'details' => [
+                    'Indikator' => $apbd->pluck('indicator')->unique()->count(),
+                    'Tahun Terbaru' => $apbd->max('year'),
+                    'Rata Realisasi' => number_format((float) $apbd->avg('percentage'), 1, ',', '.').'%',
+                ],
+                'detailUrl' => route('public-data.show', 'apbd'),
+                'lastSeen' => $apbd->max('scraped_at')?->format('Y-m-d H:i'),
+            ]);
+        }
+    }
+
+    /**
+     * IRBI risk index per kabupaten for the latest year, picking the hazard
+     * with the highest index; feeds the choropleth overlay on the map.
+     *
+     * @return array<string, array{name: string, index: float, level: string|null, hazard: string|null}>
+     */
+    private function riskMap(): array
+    {
+        $rows = DisasterRiskIndex::query()->get(['region_code', 'region_name', 'hazard_type', 'risk_index', 'risk_level', 'year']);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $latestYear = $rows->max('year');
+
+        return $rows
+            ->where('year', $latestYear)
+            ->filter(fn (DisasterRiskIndex $row) => filled($row->region_code))
+            ->groupBy('region_code')
+            ->map(function (Collection $regionRows): array {
+                $top = $regionRows->sortByDesc('risk_index')->first();
+
+                return [
+                    'name' => $top->region_name,
+                    'index' => (float) $top->risk_index,
+                    'level' => $top->risk_level,
+                    'hazard' => $top->hazard_type,
+                ];
+            })
+            ->all();
     }
 
     /**

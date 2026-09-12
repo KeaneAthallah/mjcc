@@ -18,6 +18,7 @@ class MapController extends Controller
         return view('maps.index', [
             'markers' => $data['markers'],
             'kecamatans' => $data['kecamatans'],
+            'riskMap' => $data['riskMap'],
         ]);
     }
 

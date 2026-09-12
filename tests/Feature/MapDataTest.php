@@ -1,9 +1,16 @@
 <?php
 
+use App\Models\ApbdRecord;
+use App\Models\BpsDataset;
+use App\Models\BpsObservation;
+use App\Models\CommodityPrice;
+use App\Models\DisasterEvent;
+use App\Models\DisasterRiskIndex;
 use App\Models\ExternalData;
 use App\Models\HealthFacility;
 use App\Models\Kecamatan;
 use App\Models\Kelurahan;
+use App\Models\Market;
 use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\User;
@@ -210,4 +217,142 @@ it('appends resolved external kecamatan names to the kecamatan list', function (
         ->getJson(route('maps.data'))
         ->assertOk()
         ->assertJsonPath('kecamatans.0.name', 'Bungku Tengah');
+});
+
+it('includes SITABA disaster events as kebencanaan markers', function () {
+    DisasterEvent::create([
+        'disaster_type' => 'Banjir Genangan',
+        'disaster_name' => 'Banjir di Morowali',
+        'district' => 'KABUPATEN MOROWALI',
+        'event_date' => now()->subDays(2),
+        'latitude' => -2.5,
+        'longitude' => 121.9,
+        'status' => 'terkini',
+        'dedupe_key' => 'evt-1',
+    ]);
+
+    $this->actingAs(User::factory()->viewer()->create())
+        ->getJson(route('maps.data'))
+        ->assertOk()
+        ->assertJsonPath('markers.0.slug', 'disaster_event')
+        ->assertJsonPath('markers.0.sector', 'kebencanaan')
+        ->assertJsonPath('markers.0.category', 'bencana');
+});
+
+it('enriches the market marker with the latest SP2KP commodity summary', function () {
+    $kecamatan = Kecamatan::factory()->create();
+    $market = Market::factory()->create([
+        'kecamatan_id' => $kecamatan->id,
+        'name' => 'Pasar Rakyat Bungku Tengah',
+        'latitude' => -2.5,
+        'longitude' => 121.9,
+    ]);
+
+    CommodityPrice::create([
+        'commodity' => 'Beras Premium',
+        'percentage_change' => 7.1,
+        'market' => $market->name,
+        'record_date' => now()->toDateString(),
+        'dedupe_key' => CommodityPrice::dedupeKey('Beras Premium', $market->name, now()->toDateString()),
+    ]);
+    CommodityPrice::create([
+        'commodity' => 'Minyak Goreng',
+        'percentage_change' => -4.8,
+        'market' => $market->name,
+        'record_date' => now()->toDateString(),
+        'dedupe_key' => CommodityPrice::dedupeKey('Minyak Goreng', $market->name, now()->toDateString()),
+    ]);
+    CommodityPrice::create([
+        'commodity' => 'Gula',
+        'percentage_change' => 0.0,
+        'market' => $market->name,
+        'record_date' => now()->subDays(10)->toDateString(),
+        'dedupe_key' => CommodityPrice::dedupeKey('Gula', $market->name, now()->subDays(10)->toDateString()),
+    ]);
+
+    $response = $this->actingAs(User::factory()->viewer()->create())
+        ->getJson(route('maps.data'))
+        ->assertOk();
+
+    $marketMarker = collect($response->json('markers'))->firstWhere('slug', 'market');
+
+    expect($marketMarker['details']['Komoditas SP2KP'])->toBe(2)
+        ->and(json_encode($marketMarker['details']))->toContain('Beras Premium')
+        ->and(json_encode($marketMarker['details']))->toContain('Minyak Goreng')
+        ->and($marketMarker['detailUrl'])->toBe(route('public-data.show', 'sp2kp'));
+});
+
+it('anchors BPS & APBD region-level data at the kabupaten centroid', function () {
+    $dataset = BpsDataset::create(['dataset_id' => 'b-001', 'name' => 'Statistik Dasar']);
+
+    BpsObservation::create([
+        'bps_dataset_id' => $dataset->id,
+        'indicator' => 'Jumlah Penduduk',
+        'region_name' => 'Kabupaten Morowali',
+        'year' => now()->year,
+        'value' => 150000,
+        'dedupe_key' => BpsObservation::dedupeKey($dataset->id, 'Jumlah Penduduk', 'Kabupaten Morowali', now()->year, null),
+    ]);
+
+    ApbdRecord::create([
+        'year' => now()->year,
+        'indicator' => 'Pendapatan',
+        'target_value' => 1000000,
+        'realization_value' => 900000,
+        'percentage' => 90.0,
+        'dedupe_key' => ApbdRecord::dedupeKey(now()->year, 'Pendapatan', 'Kabupaten Morowali'),
+    ]);
+
+    $response = $this->actingAs(User::factory()->viewer()->create())
+        ->getJson(route('maps.data'))
+        ->assertOk();
+
+    $markers = collect($response->json('markers'));
+
+    expect($markers->where('slug', 'bps_observation')->count())->toBe(1)
+        ->and($markers->where('slug', 'apbd_record')->count())->toBe(1)
+        ->and($markers->where('slug', 'bps_observation')->first()['sector'])->toBe('statistik')
+        ->and($markers->where('slug', 'apbd_record')->first()['category'])->toBe('data-publik-apbd')
+        ->and($markers->where('slug', 'bps_observation')->first()['category'])->toBe('data-publik-bps');
+});
+
+it('provides an IRBI risk map for the latest year only', function () {
+    DisasterRiskIndex::create([
+        'region_name' => 'Morowali',
+        'region_code' => '72.06',
+        'hazard_type' => 'Banjir',
+        'risk_index' => 180.5,
+        'risk_level' => 'Tinggi',
+        'year' => now()->year,
+        'dedupe_key' => 'risk-1',
+    ]);
+    DisasterRiskIndex::create([
+        'region_name' => 'Morowali',
+        'region_code' => '72.06',
+        'hazard_type' => 'Kekeringan',
+        'risk_index' => 120.0,
+        'risk_level' => 'Sedang',
+        'year' => now()->year,
+        'dedupe_key' => 'risk-2',
+    ]);
+    DisasterRiskIndex::create([
+        'region_name' => 'Morowali',
+        'region_code' => '72.06',
+        'hazard_type' => 'Banjir',
+        'risk_index' => 90.0,
+        'risk_level' => 'Rendah',
+        'year' => now()->year - 1,
+        'dedupe_key' => 'risk-3',
+    ]);
+
+    $response = $this->actingAs(User::factory()->viewer()->create())
+        ->getJson(route('maps.data'))
+        ->assertOk();
+
+    $riskMap = $response->json('riskMap');
+
+    expect($riskMap)->toHaveKey('72.06')
+        ->and($riskMap['72.06']['index'])->toBe(180.5)
+        ->and($riskMap['72.06']['level'])->toBe('Tinggi')
+        ->and($riskMap['72.06']['hazard'])->toBe('Banjir');
 });

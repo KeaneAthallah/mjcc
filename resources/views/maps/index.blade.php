@@ -25,6 +25,8 @@
                                     'pendidikan' => ['label' => '🎓 Pendidikan', 'color' => '#10b981'],
                                     'ketertiban' => ['label' => '🛡️ Ketertiban', 'color' => '#2563eb'],
                                     'kesehatan' => ['label' => '🏥 Kesehatan', 'color' => '#dc2626'],
+                                    'kebencanaan' => ['label' => '⚠️ Kebencanaan', 'color' => '#b91c1c'],
+                                    'statistik' => ['label' => '📈 Statistik', 'color' => '#0891b2'],
                                 ];
                             @endphp
                             @foreach ($sectors as $key => $s)
@@ -77,6 +79,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     const M = window.Mjcc.maps;
     const allMarkers = @json($markers);
+    const riskMap = @json($riskMap);
+    const riskGeoUrl = @json(asset('geo/sulteng-kabupaten.geojson'));
+    let riskGeo = null;
+    let riskLayer = null;
 
     let activeSector = 'all';
     let activeKecamatan = '';
@@ -87,7 +93,38 @@ document.addEventListener('DOMContentLoaded', () => {
         pendidikan: '#10b981',
         ketertiban: '#2563eb',
         kesehatan: '#dc2626',
+        kebencanaan: '#b91c1c',
+        statistik: '#0891b2',
     };
+
+    async function syncRiskOverlay() {
+        if (!map) {
+            return;
+        }
+        const want = activeSector === 'kebencanaan';
+        if (want && !riskLayer) {
+            if (!riskGeo) {
+                riskGeo = await fetch(riskGeoUrl).then((r) => r.json()).catch(() => null);
+            }
+            if (!riskGeo) {
+                return;
+            }
+            M.createRiskChoropleth('combined-map', riskGeo, riskMap, {
+                map,
+                showLegend: false,
+                fitBounds: false,
+                includeEmpty: true,
+                emptyColor: '#e5e7eb',
+            });
+            riskLayer = map._mjccStore?.riskLayer ?? null;
+        } else if (!want && riskLayer) {
+            map.removeLayer(riskLayer);
+            riskLayer = null;
+            if (map._mjccStore) {
+                map._mjccStore.riskLayer = null;
+            }
+        }
+    }
 
     function focusTarget(markers) {
         return M.findFocus(markers, focus);
@@ -159,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('marker-count').textContent = markers.length;
         renderLegend();
         openFocusPopup(markers);
+        syncRiskOverlay();
     }
 
     document.querySelectorAll('[data-sector]').forEach((btn) => {

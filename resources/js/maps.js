@@ -20,6 +20,9 @@ export const categoryConfig = {
     'data-publik-pendidikan': { sector: 'pendidikan', color: '#0d9488', emoji: '📊', label: 'Data Publik' },
     'data-publik-kesehatan': { sector: 'kesehatan', color: '#f97316', emoji: '📊', label: 'Data Publik' },
     'data-publik-keamanan': { sector: 'ketertiban', color: '#7c3aed', emoji: '📊', label: 'Data Publik' },
+    bencana: { sector: 'kebencanaan', color: '#dc2626', emoji: '⚠️', label: 'Kejadian Bencana' },
+    'data-publik-bps': { sector: 'statistik', color: '#0891b2', emoji: '📈', label: 'Statistik BPS' },
+    'data-publik-apbd': { sector: 'statistik', color: '#7c3aed', emoji: '💰', label: 'Anggaran APBD' },
 };
 
 function iconFor(category, size = 28) {
