@@ -14,7 +14,7 @@
 </head>
 <body class="bg-gray-100 text-gray-800 h-dvh overflow-hidden">
 
-<div class="flex h-full">
+<div class="flex h-full" x-data>
 
     <!-- ===== SIDEBAR ===== -->
     <aside

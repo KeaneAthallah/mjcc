@@ -40,6 +40,13 @@
         font-size: 13px;
         line-height: 1.5;
     }
+
+    /* Keep Leaflet's internal layers (tiles/markers/popups use z-index up to 700)
+       inside the map container, so the map can never paint over the mobile
+       sidebar (z-40), its overlay (z-30), or the header (z-20). */
+    .leaflet-container {
+        isolation: isolate;
+    }
 }
 
 @layer components {
