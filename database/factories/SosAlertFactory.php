@@ -129,4 +129,21 @@ class SosAlertFactory extends Factory
             ];
         });
     }
+
+    public function constrained(string $type = SosAlert::CONSTRAINT_CANNOT_REACH): static
+    {
+        return $this->state(function (array $attributes) use ($type) {
+            $responder = User::factory()->create(['responder_type' => 'medical']);
+
+            return [
+                'status' => SosAlert::STATUS_CONSTRAINED,
+                'accepted_by' => $responder->id,
+                'accepted_at' => now()->subMinutes(10),
+                'constraint_type' => $type,
+                'constraint_reason' => 'Jalan tertutup longsor sehingga belum bisa tiba.',
+                'constrained_by' => $responder->id,
+                'constrained_at' => now()->subMinutes(8),
+            ];
+        });
+    }
 }

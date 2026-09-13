@@ -134,6 +134,7 @@ Route::prefix('v1')->name('api.')->group(function () {
         Route::post('sos/{sos}/accept', [SosController::class, 'accept']);
         Route::post('sos/{sos}/on-the-way', [SosController::class, 'onTheWay']);
         Route::post('sos/{sos}/arrived', [SosController::class, 'arrived']);
+        Route::post('sos/{sos}/constraint', [SosController::class, 'constrain']);
         Route::post('sos/{sos}/location', [SosController::class, 'updateLocation']);
         Route::get('sos/{sos}/responder-locations', [SosController::class, 'responderLocations']);
         Route::get('sos/{sos}', [SosController::class, 'show']);

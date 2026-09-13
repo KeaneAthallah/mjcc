@@ -17,9 +17,13 @@ use Illuminate\Validation\ValidationException;
  *     active -> acknowledged -> responding -> resolved
  *     active -> accepted -> on_the_way -> arrived -> resolved
  *     active -> cancelled
- *     accepted -> cancelled
- *     on_the_way -> cancelled
+ *     accepted -> on_the_way | couldn't reach (constrained)
+ *     constrained -> on_the_way | arrived | cancelled
  *     arrived -> resolved
+ *
+ * The petugas cannot resolve an assigned SOS until they have arrived. If they
+ * cannot reach the location or are delayed, they report a "constraint" (type +
+ * reason) and may later continue on_the_way or mark arrived.
  *
  * Also enforces the anti-spam rule (one open SOS per user) and writes the
  * audit trail for every security-relevant SOS action.
@@ -49,10 +53,17 @@ class SosService
             SosAlert::STATUS_ON_THE_WAY,
             SosAlert::STATUS_RESOLVED,
             SosAlert::STATUS_CANCELLED,
+            SosAlert::STATUS_CONSTRAINED,
         ],
         SosAlert::STATUS_ON_THE_WAY => [
             SosAlert::STATUS_ARRIVED,
             SosAlert::STATUS_RESOLVED,
+            SosAlert::STATUS_CANCELLED,
+            SosAlert::STATUS_CONSTRAINED,
+        ],
+        SosAlert::STATUS_CONSTRAINED => [
+            SosAlert::STATUS_ON_THE_WAY,
+            SosAlert::STATUS_ARRIVED,
             SosAlert::STATUS_CANCELLED,
         ],
         SosAlert::STATUS_ARRIVED => [
@@ -61,6 +72,18 @@ class SosService
         ],
         SosAlert::STATUS_RESOLVED => [],
         SosAlert::STATUS_CANCELLED => [],
+    ];
+
+    /**
+     * Statuses in which the petugas may (re)report a constraint: only before
+     * they mark themselves as arrived.
+     *
+     * @var array<int, string>
+     */
+    private const REPORTABLE_CONSTRAINT_STATUSES = [
+        SosAlert::STATUS_ACCEPTED,
+        SosAlert::STATUS_ON_THE_WAY,
+        SosAlert::STATUS_CONSTRAINED,
     ];
 
     public function __construct(
@@ -157,13 +180,71 @@ class SosService
     }
 
     /**
-     * "Selesaikan SOS": acknowledged/responding -> resolved.
+     * "Selesaikan SOS": acknowledged/responding -> resolved (operator/admin),
+     * arrived -> resolved (petugas). The petugas may only resolve an SOS they
+     * accepted after they have physically arrived at the location.
      */
     public function resolve(SosAlert $sos, ?string $message, User $actor): SosAlert
     {
+        if ($sos->accepted_by === $actor->id &&
+            $sos->status !== SosAlert::STATUS_ARRIVED &&
+            $this->canTransition($sos, SosAlert::STATUS_RESOLVED)) {
+            throw ValidationException::withMessages([
+                'status' => ['Petugas hanya dapat menyelesaikan SOS setelah tiba di lokasi. Anda dapat melaporkan kendala jika belum bisa tiba.'],
+            ]);
+        }
+
         $this->assertCanTransition($sos, SosAlert::STATUS_RESOLVED);
 
         return $this->applyStatus($sos, SosAlert::STATUS_RESOLVED, $message, $actor, ActivityLog::ACTION_SOS_RESOLVED, 'SOS telah diselesaikan.', resolved: true);
+    }
+
+    /**
+     * "Petugas Terkendala": the accepted petugas reports they cannot reach the
+     * location (or are delayed) with a required reason. Notifies the requester
+     * so they know help may be delayed. May be re-reported to update the reason.
+     */
+    public function constrain(SosAlert $sos, string $type, string $reason, User $actor): SosAlert
+    {
+        if ($sos->accepted_by !== $actor->id) {
+            throw ValidationException::withMessages([
+                'responder' => ['Hanya petugas yang menerima SOS yang dapat melaporkan kendala.'],
+            ]);
+        }
+
+        if (! in_array($sos->status, self::REPORTABLE_CONSTRAINT_STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'status' => ['Kendala hanya dapat dilaporkan sebelum petugas tiba di lokasi (status saat ini: "'.$sos->status.'").'],
+            ]);
+        }
+
+        $sos = DB::transaction(function () use ($sos, $type, $reason, $actor): SosAlert {
+            $sos->update([
+                'status' => SosAlert::STATUS_CONSTRAINED,
+                'constraint_type' => $type,
+                'constraint_reason' => $reason,
+                'constrained_by' => $actor->id,
+                'constrained_at' => now(),
+            ]);
+
+            $this->log($sos, ActivityLog::ACTION_SOS_CONSTRAINED, $actor, [
+                'status' => $sos->status,
+                'constraint_type' => $type,
+                'constraint_reason' => $reason,
+            ]);
+
+            return $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+        });
+
+        $this->notifications->notifyUser(
+            $sos->user,
+            'Petugas Terkendala',
+            'Petugas melaporkan kendala: '.$reason.'. Mohon menunggu pembaruan.',
+            'sos',
+            ['sos_alert_id' => $sos->id, 'status' => SosAlert::STATUS_CONSTRAINED],
+        );
+
+        return $sos;
     }
 
     /**
@@ -326,7 +407,7 @@ class SosService
                 $q->where('category', $responder->responder_type);
             })
             ->with(['user:id,name,email,role', 'acceptedBy:id,name'])
-            ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'acknowledged' THEN 1 WHEN 'responding' THEN 2 WHEN 'accepted' THEN 3 WHEN 'on_the_way' THEN 4 WHEN 'arrived' THEN 5 ELSE 6 END")
+            ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'acknowledged' THEN 1 WHEN 'responding' THEN 2 WHEN 'accepted' THEN 3 WHEN 'on_the_way' THEN 4 WHEN 'arrived' THEN 5 WHEN 'constrained' THEN 6 ELSE 7 END")
             ->latest('created_at')
             ->get();
     }
@@ -334,7 +415,7 @@ class SosService
     /**
      * Counts of open alerts for the notification badge.
      *
-     * @return array{open: int, active: int, acknowledged: int, responding: int, accepted: int, on_the_way: int, arrived: int}
+     * @return array{open: int, active: int, acknowledged: int, responding: int, accepted: int, on_the_way: int, arrived: int, constrained: int}
      */
     public function counts(?User $user = null): array
     {
@@ -354,6 +435,7 @@ class SosService
             'accepted' => (clone $open)->where('status', SosAlert::STATUS_ACCEPTED)->count(),
             'on_the_way' => (clone $open)->where('status', SosAlert::STATUS_ON_THE_WAY)->count(),
             'arrived' => (clone $open)->where('status', SosAlert::STATUS_ARRIVED)->count(),
+            'constrained' => (clone $open)->where('status', SosAlert::STATUS_CONSTRAINED)->count(),
         ];
     }
 

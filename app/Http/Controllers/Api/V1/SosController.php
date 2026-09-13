@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\AcceptSosAlertRequest;
 use App\Http\Requests\Api\AcknowledgeSosAlertRequest;
+use App\Http\Requests\Api\ConstrainedSosAlertRequest;
 use App\Http\Requests\Api\ResolveSosAlertRequest;
 use App\Http\Requests\Api\RespondSosAlertRequest;
 use App\Http\Requests\Api\StoreSosAlertRequest;
@@ -45,7 +46,7 @@ class SosController extends Controller
                 ->when($request->filled('to'), fn (Builder $q) => $q->whereDate('created_at', '<=', $request->date('to')));
 
             $paginator = $query
-                ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'acknowledged' THEN 1 WHEN 'responding' THEN 2 WHEN 'accepted' THEN 3 WHEN 'on_the_way' THEN 4 WHEN 'arrived' THEN 5 WHEN 'resolved' THEN 6 ELSE 7 END")
+                ->orderByRaw("CASE status WHEN 'active' THEN 0 WHEN 'acknowledged' THEN 1 WHEN 'responding' THEN 2 WHEN 'accepted' THEN 3 WHEN 'on_the_way' THEN 4 WHEN 'arrived' THEN 5 WHEN 'constrained' THEN 6 WHEN 'resolved' THEN 7 ELSE 8 END")
                 ->latest('created_at')
                 ->paginate($this->perPage($request))
                 ->withQueryString();
@@ -150,9 +151,26 @@ class SosController extends Controller
     {
         $sos = $this->service->arrived($sos, $request->user());
 
-        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name', 'acceptedBy:id,name']);
+        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name', 'acceptedBy:id,name', 'constrainedBy:id,name']);
 
         return ApiResponse::success(new SosAlertResource($sos), 'Status diperbarui menjadi tiba di lokasi.');
+    }
+
+    /**
+     * Responder reports they cannot reach the location / are delayed.
+     */
+    public function constrain(ConstrainedSosAlertRequest $request, SosAlert $sos): JsonResponse
+    {
+        $sos = $this->service->constrain(
+            $sos,
+            $request->validated('constraint_type'),
+            $request->validated('constraint_reason'),
+            $request->user(),
+        );
+
+        $sos->load(['user:id,name,email,role', 'respondedBy:id,name', 'resolvedBy:id,name', 'acceptedBy:id,name', 'constrainedBy:id,name']);
+
+        return ApiResponse::success(new SosAlertResource($sos), 'Kendala petugas telah dilaporkan.');
     }
 
     /**
@@ -246,6 +264,7 @@ class SosController extends Controller
             SosAlert::STATUS_ACCEPTED => SosAlert::STATUS_ACCEPTED,
             SosAlert::STATUS_ON_THE_WAY => SosAlert::STATUS_ON_THE_WAY,
             SosAlert::STATUS_ARRIVED => SosAlert::STATUS_ARRIVED,
+            SosAlert::STATUS_CONSTRAINED => SosAlert::STATUS_CONSTRAINED,
             SosAlert::STATUS_RESOLVED => SosAlert::STATUS_RESOLVED,
             SosAlert::STATUS_CANCELLED => SosAlert::STATUS_CANCELLED,
         ];

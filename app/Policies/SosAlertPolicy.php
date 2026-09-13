@@ -75,6 +75,19 @@ class SosAlertPolicy
     }
 
     /**
+     * Only the petugas who accepted the alert may report a "constraint"
+     * (cannot reach / delayed), and only before they mark themselves arrived.
+     */
+    public function reportConstraint(User $user, SosAlert $sos): bool
+    {
+        if (! in_array($sos->status, [SosAlert::STATUS_ACCEPTED, SosAlert::STATUS_ON_THE_WAY, SosAlert::STATUS_CONSTRAINED], true)) {
+            return false;
+        }
+
+        return $sos->accepted_by === $user->id;
+    }
+
+    /**
      * The owner of the alert (and operators/admins) may watch the live
      * responder locations so the requester can see the petugas on a map.
      */

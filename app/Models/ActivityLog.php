@@ -46,6 +46,8 @@ class ActivityLog extends Model
 
     public const ACTION_SOS_ARRIVED = 'sos_arrived';
 
+    public const ACTION_SOS_CONSTRAINED = 'sos_constrained';
+
     public const ACTION_ALERT_STATUS = 'alert_status';
 
     protected $fillable = [
@@ -95,6 +97,7 @@ class ActivityLog extends Model
             self::ACTION_SOS_ACCEPTED => 'Menerima SOS darurat',
             self::ACTION_SOS_ON_THE_WAY => 'Menuju lokasi SOS',
             self::ACTION_SOS_ARRIVED => 'Tiba di lokasi SOS',
+            self::ACTION_SOS_CONSTRAINED => 'Melaporkan kendala petugas',
             self::ACTION_ALERT_STATUS => 'Memperbarui status alert',
             default => $this->action,
         };

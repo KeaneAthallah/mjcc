@@ -25,6 +25,18 @@ class SosAlert extends Model
 
     public const STATUS_ARRIVED = 'arrived';
 
+    /**
+     * Responder could not reach the location / was delayed.
+     */
+    public const STATUS_CONSTRAINED = 'constrained';
+
+    /**
+     * Ordered constraint types reported by the petugas.
+     */
+    public const CONSTRAINT_CANNOT_REACH = 'cannot_reach';
+
+    public const CONSTRAINT_DELAYED = 'delayed';
+
     public const CATEGORY_GENERAL = 'general';
 
     public const CATEGORY_MEDICAL = 'medical';
@@ -51,6 +63,10 @@ class SosAlert extends Model
         'resolved_at',
         'accepted_by',
         'accepted_at',
+        'constraint_type',
+        'constraint_reason',
+        'constrained_by',
+        'constrained_at',
     ];
 
     public function user(): BelongsTo
@@ -73,6 +89,11 @@ class SosAlert extends Model
         return $this->belongsTo(User::class, 'accepted_by');
     }
 
+    public function constrainedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'constrained_by');
+    }
+
     /**
      * Statuses where the request is still awaiting a response.
      *
@@ -87,6 +108,7 @@ class SosAlert extends Model
             self::STATUS_ACCEPTED,
             self::STATUS_ON_THE_WAY,
             self::STATUS_ARRIVED,
+            self::STATUS_CONSTRAINED,
         ];
     }
 
@@ -104,6 +126,7 @@ class SosAlert extends Model
             self::STATUS_ACCEPTED,
             self::STATUS_ON_THE_WAY,
             self::STATUS_ARRIVED,
+            self::STATUS_CONSTRAINED,
         ];
     }
 
@@ -134,6 +157,37 @@ class SosAlert extends Model
         };
     }
 
+    /**
+     * Indonesian label for the current status.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_ACTIVE => 'Aktif',
+            self::STATUS_ACKNOWLEDGED => 'Diterima',
+            self::STATUS_RESPONDING => 'Menuju Lokasi',
+            self::STATUS_ACCEPTED => 'Diterima Petugas',
+            self::STATUS_ON_THE_WAY => 'Petugas Menuju Lokasi',
+            self::STATUS_ARRIVED => 'Petugas Tiba',
+            self::STATUS_CONSTRAINED => 'Petugas Terkendala',
+            self::STATUS_RESOLVED => 'Selesai',
+            self::STATUS_CANCELLED => 'Dibatalkan',
+            default => ucfirst($this->status),
+        };
+    }
+
+    /**
+     * Indonesian label for the constraint type reported by the petugas.
+     */
+    public function getConstraintTypeLabelAttribute(): string
+    {
+        return match ($this->constraint_type) {
+            self::CONSTRAINT_CANNOT_REACH => 'Tidak dapat menjangkau lokasi',
+            self::CONSTRAINT_DELAYED => 'Keterlambatan di perjalanan',
+            default => 'Terkendala',
+        };
+    }
+
     protected function casts(): array
     {
         return [
@@ -143,6 +197,7 @@ class SosAlert extends Model
             'responded_at' => 'datetime',
             'resolved_at' => 'datetime',
             'accepted_at' => 'datetime',
+            'constrained_at' => 'datetime',
         ];
     }
 }

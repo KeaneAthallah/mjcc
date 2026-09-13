@@ -20,8 +20,10 @@ statistik, grafik (Chart.js), dan peta interaktif (Leaflet + marker cluster).
 Selain dashboard, aplikasi ini menawarkan:
   - SOS / DARURAT  : permintaan bantuan (kategori medical/fire/police) dengan
       alur status (pending -> acknowledged -> on_the_way -> arrived ->
-      resolved), pelacakan posisi petugas, dan peta live peta-web
-      (marker sender + petugas + rute OSRM petugas->sender).
+      resolved; plus status khusus constrained = "Petugas Terkendala" yang
+      mengharuskan petugas melapor tipe kendala + alasan wajib dan mengunci
+      aksi selesaikan sampai petugas tiba), pelacakan posisi petugas, dan peta
+      live peta-web (marker sender + petugas + rute OSRM petugas->sender).
   - NOTIFIKASI     : baris notifikasi per-user (disimpan MySQL), dikonsumsi
       aplikasi Android lewat polling, dan daftar notifikasi di UI web/API.
   - PUBLIK DATA INTELLIGENCE CENTER : sinkronisasi otomatis 8 sumber data
@@ -106,7 +108,7 @@ Selain dashboard, aplikasi ini menawarkan:
              PublicDataApiController (categories/sources/source - tanpa token),
              SosController (create/index/show/my-open/active-count/
                             active-incidents/acknowledge/accept/respond/
-                            on-the-way/arrived/resolve/cancel/updateLocation/
+                            on-the-way/arrived/resolve/cancel/constraint/updateLocation/
                             responderLocations),
              NotificationController (index, markRead)
         Controller.php                   -> base (memakai trait AuthorizesRequests)
@@ -143,7 +145,8 @@ Selain dashboard, aplikasi ini menawarkan:
       SecurityDashboardService.php
       HealthDashboardService.php
       MapService.php              (data peta gabungan semua sektor)
-      SosService.php              (alur status SOS, notifikasi via NotificationService)
+      SosService.php              (alur status SOS, constraint "terkendala",
+                                  notifikasi via NotificationService)
       NotificationService.php     (buat baris & tandai-baca notifikasi per user)
       PublicData/                 -> Public Data Intelligence Center
         SourceRegistry.php        (registri sumber -> adapter + SourceRegistry::sync)
@@ -216,8 +219,10 @@ Model utama dan relasinya (semua memakai SoftDeletes kecuali User/Subject):
                     responder_type (medical/fire/police, nullable)
   SosAlert        : user_id (sender), category (medical/fire/police), message,
                     latitude/longitude/accuracy, status (pending/acknowledged/
-                    on_the_way/arrived/resolved/cancelled), responded_by/at,
-                    accepted_by/at, resolved_by/at + relasi user/respondedBy
+                    on_the_way/arrived/resolved/cancelled/constrained),
+                    responded_by/at, accepted_by/at, resolved_by/at,
+                    constraint_type (cannot_reach/delayed), constraint_reason,
+                    constrained_by/at + relasi user/respondedBy/constrainedBy
   ResponderLocation: sos_alert_id, user_id (petugas), lat/long, accuracy;
                     riwayat posisi live petugas per SOS (terbaru per user)
   Notification    : user_id, title, body, type ('sos'), data (array JSON,
@@ -406,7 +411,7 @@ Route modul SOS (web):
   GET  /sos/live/{sos}              -> JSON detail + responder untuk halaman
                                        detail live (dipanggil polling 15 detik)
   GET  /sos/{sos}                   -> detail SOS + peta sender & petugas
-  POST /sos/{sos}/acknowledge|respond|resolve|cancel
+  POST /sos/{sos}/acknowledge|respond|resolve|cancel|constraint
                                        aksi status dari UI web
 
 Route Public Data Intelligence Center (web, di bawah 'auth', prefix
@@ -444,8 +449,9 @@ REST API  /api/v1  (autentikasi Bearer token Sanctum, throttle login/register):
     POST /sos/{sos}/respond       balas status yang cocok dengan kategori
     POST /sos/{sos}/on-the-way    petugas menuju lokasi
     POST /sos/{sos}/arrived       petugas tiba
-    POST /sos/{sos}/resolve       selesaikan SOS (solver)
+    POST /sos/{sos}/resolve       selesaikan SOS (solver; petugas hanya setelah tiba)
     POST /sos/{sos}/cancel        batalkan SOS (sender/operator/admin)
+    POST /sos/{sos}/constraint    petugas laporkan kendala (tipe + alasan wajib, sampai tiba)
 POST /sos/{sos}/location      update posisi petugas (ResponderLocation)
      GET  /sos/{sos}/responder-locations  riwayat posisi petugas utk peta live
    Notifikasi:

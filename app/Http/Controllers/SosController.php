@@ -266,6 +266,8 @@ class SosController extends Controller
             SosAlert::STATUS_ACTIVE => 'Aktif',
             SosAlert::STATUS_ACKNOWLEDGED => 'Diterima',
             SosAlert::STATUS_RESPONDING => 'Menuju Lokasi',
+            SosAlert::STATUS_ARRIVED => 'Tiba',
+            SosAlert::STATUS_CONSTRAINED => 'Terkendala',
             SosAlert::STATUS_RESOLVED => 'Selesai',
             SosAlert::STATUS_CANCELLED => 'Dibatalkan',
         ];
@@ -280,6 +282,8 @@ class SosController extends Controller
             SosAlert::STATUS_ACTIVE => 'red',
             SosAlert::STATUS_ACKNOWLEDGED => 'amber',
             SosAlert::STATUS_RESPONDING => 'blue',
+            SosAlert::STATUS_ARRIVED => 'teal',
+            SosAlert::STATUS_CONSTRAINED => 'amber',
             SosAlert::STATUS_RESOLVED => 'green',
             SosAlert::STATUS_CANCELLED => 'gray',
         ];
