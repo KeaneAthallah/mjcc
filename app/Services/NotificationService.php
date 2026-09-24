@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Models\SosAlert;
 use App\Models\User;
@@ -41,6 +42,8 @@ class NotificationService
             'type' => $type,
             'data' => $data,
         ]);
+
+        NotificationCreated::dispatch($notification);
 
         return $notification;
     }

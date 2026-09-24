@@ -2,6 +2,7 @@
 
 namespace App\Services\PublicData;
 
+use App\Events\PublicDataSyncCompleted;
 use App\Models\PublicDataSync;
 use RuntimeException;
 use Throwable;
@@ -53,6 +54,10 @@ class PublicDataScraper
                         : count($result['failures']).' dari '.count($result['matched']).' dataset gagal disinkronkan.',
                 ]);
 
+                $result['status'] = PublicDataSync::STATUS_SUCCESS;
+
+                PublicDataSyncCompleted::dispatch($target, $result['label'], $result);
+
                 $results[] = $result;
             } catch (Throwable $e) {
                 if ($discoverOnly) {
@@ -75,8 +80,11 @@ class PublicDataScraper
                     'updated' => 0,
                     'records' => 0,
                     'failures' => [['url' => '', 'message' => $e->getMessage()]],
+                    'status' => PublicDataSync::STATUS_FAILED,
                     'error' => $e->getMessage(),
                 ];
+
+                PublicDataSyncCompleted::dispatch($target, $result['label'], $result);
 
                 $results[] = $result;
             }

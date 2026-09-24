@@ -3,6 +3,7 @@
 @import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 @import 'tailwindcss';
 
+@source '../../resources/js/app/**/*.{ts,tsx}';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 

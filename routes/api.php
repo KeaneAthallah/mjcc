@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\CommandAlertController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthFacilityController;
 use App\Http\Controllers\Api\V1\KecamatanController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\PublicController;
 use App\Http\Controllers\Api\V1\PublicDataApiController;
 use App\Http\Controllers\Api\V1\SchoolController;
+use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SosController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TipkamtikmasController;
@@ -146,5 +148,9 @@ Route::prefix('v1')->name('api.')->group(function () {
         // Notifications
         Route::get('notifications', [NotificationController::class, 'index']);
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markRead']);
+
+        // Command center alerts + keystone search (read-only, for the SPA)
+        Route::get('alerts', [CommandAlertController::class, 'index']);
+        Route::get('search', [SearchController::class, 'index']);
     });
 });

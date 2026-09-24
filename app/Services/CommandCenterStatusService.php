@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\HealthFacility;
+use App\Models\Kecamatan;
 use App\Models\Market;
 use App\Models\Polsek;
 use App\Models\Poskamling;
@@ -22,6 +23,19 @@ use Illuminate\Support\Facades\Cache;
 class CommandCenterStatusService
 {
     private const CACHE_TTL = 60;
+
+    /**
+     * Forget the cached overall + per-kecamatan status payloads so the widget
+     * recomputes from fresh data after master data changes.
+     */
+    public function clearCache(): void
+    {
+        Cache::forget('command-center.status.overall');
+
+        foreach (Kecamatan::query()->pluck('id') as $id) {
+            Cache::forget('command-center.status.kecamatan.'.$id);
+        }
+    }
 
     private const SCOPES = [
         'schools' => School::class,

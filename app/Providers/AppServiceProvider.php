@@ -4,13 +4,17 @@ namespace App\Providers;
 
 use App\Models\CommandAlert;
 use App\Models\HealthFacility;
+use App\Models\Kecamatan;
 use App\Models\Kelurahan;
 use App\Models\Market;
 use App\Models\Polsek;
 use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\SosAlert;
+use App\Models\Subject;
 use App\Models\Tipkamtikmas;
+use App\Models\User;
+use App\Observers\DataChangeObserver;
 use App\Support\Access;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -61,6 +65,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        $this->registerDataChangeObservers();
 
         Blade::if('canwrite', fn ($resource) => Access::canWrite(auth()->user(), $resource));
 
@@ -127,5 +133,30 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('currentUser', auth()->user());
         });
+    }
+
+    /**
+     * Observe every master model so a single batch `MasterDataChanged` event
+     * (broadcast + cache invalidation) is emitted once per request at the end
+     * of the lifecycle, instead of once per row.
+     */
+    private function registerDataChangeObservers(): void
+    {
+        foreach ([
+            School::class,
+            HealthFacility::class,
+            Poskamling::class,
+            Tipkamtikmas::class,
+            Market::class,
+            Polsek::class,
+            Kecamatan::class,
+            Kelurahan::class,
+            Subject::class,
+            User::class,
+        ] as $model) {
+            $model::observe(DataChangeObserver::class);
+        }
+
+        $this->app->terminating(fn () => DataChangeObserver::flush(auth()?->id()));
     }
 }

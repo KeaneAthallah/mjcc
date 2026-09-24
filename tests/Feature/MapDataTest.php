@@ -14,6 +14,7 @@ use App\Models\Market;
 use App\Models\Poskamling;
 use App\Models\School;
 use App\Models\User;
+use App\Observers\DataChangeObserver;
 use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
@@ -104,6 +105,11 @@ it('serves the cached payload until a refresh is requested', function () {
 
     $user = User::factory()->viewer()->create();
     $url = route('maps.data');
+
+    // The seed writes above flush through the change observer; drain them so
+    // the reads below exercise genuine caching instead of being busted at the
+    // next request boundary by the terminating flush.
+    DataChangeObserver::flush($user->id);
 
     $this->actingAs($user)->getJson($url)->assertOk()->assertJsonCount(1, 'markers');
 

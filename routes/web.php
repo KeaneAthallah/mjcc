@@ -28,7 +28,7 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return view('spa');
 });
 
 // Authentication
@@ -149,3 +149,11 @@ Route::middleware('auth')->group(function () {
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 });
+
+// SPA fallback: any path not handled by an existing route renders the React app.
+// Excludes /api, /broadcasting, /build, /storage, /vendor and legacy /data-publik
+// URLs so unknown API calls, ES-bundled assets, uploaded files and sector pages
+// keep their original 404/file behavior.
+Route::get('/{any}', function () {
+    return view('spa');
+})->where('any', '^(?!api(?:/|$)|broadcasting(?:/|$)|build(?:/|$)|storage(?:/|$)|vendor(?:/|$)|data-publik(?:/|$)).*');

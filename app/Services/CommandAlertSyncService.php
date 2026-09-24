@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\CommandAlertChanged;
 use App\Models\CommandAlert;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -33,6 +34,7 @@ class CommandAlertSyncService
 
         $syncStartedAt = Carbon::now();
         $seenKeys = [];
+        $changed = false;
 
         foreach ($this->detector->all() as $alert) {
             $resourceClass = $alert['resource_class'] ?? null;
@@ -44,7 +46,7 @@ class CommandAlertSyncService
 
             $seenKeys[] = $resourceClass.':'.$resourceId.':'.$alert['rule'];
 
-            CommandAlert::updateOrCreate(
+            $synced = CommandAlert::updateOrCreate(
                 [
                     'rule' => $alert['rule'],
                     'resource_type' => $resourceClass,
@@ -66,10 +68,18 @@ class CommandAlertSyncService
                     'last_seen_at' => $syncStartedAt,
                 ],
             );
+
+            $changed = $changed || $synced->wasRecentlyCreated || $synced->wasChanged();
         }
 
         if ((bool) config('command-center.alerts.auto_resolve', true)) {
-            $this->resolveMissing($seenKeys);
+            $changed = $this->resolveMissing($seenKeys) || $changed;
+        }
+
+        // Broadcast + bust the sidebar caches only when something actually
+        // changed, so clients stop polling the alert bell.
+        if ($changed) {
+            CommandAlertChanged::dispatch();
         }
 
         return CommandAlert::query()->whereIn('status', CommandAlert::openStatuses())->count();
@@ -83,12 +93,14 @@ class CommandAlertSyncService
      *
      * @param  string[]  $seenKeys
      */
-    private function resolveMissing(array $seenKeys): void
+    private function resolveMissing(array $seenKeys): bool
     {
+        $changed = false;
+
         CommandAlert::query()
             ->whereIn('status', CommandAlert::openStatuses())
             ->whereNotNull('resource_type')
-            ->each(function (CommandAlert $alert) use ($seenKeys) {
+            ->each(function (CommandAlert $alert) use ($seenKeys, &$changed) {
                 $key = $alert->resource_type.':'.$alert->resource_id.':'.$alert->rule;
 
                 if (! in_array($key, $seenKeys, true)) {
@@ -96,7 +108,11 @@ class CommandAlertSyncService
                         'status' => CommandAlert::STATUS_SELESAI,
                         'resolved_at' => now(),
                     ]);
+
+                    $changed = true;
                 }
             });
+
+        return $changed;
     }
 }

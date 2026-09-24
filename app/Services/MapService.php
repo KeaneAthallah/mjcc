@@ -64,6 +64,20 @@ class MapService
     }
 
     /**
+     * Forget every cached combined-map payload (all kecamatan + global map).
+     * Called by `DataCacheFlusher` whenever any master or public dataset row
+     * changes, so the map reflects new data without waiting for the TTL.
+     */
+    public function flushCache(): void
+    {
+        Cache::forget('command-center.maps.all');
+
+        foreach (Kecamatan::query()->pluck('id') as $id) {
+            Cache::forget('command-center.maps.'.$id);
+        }
+    }
+
+    /**
      * @return array{markers: Collection<int, array<string, mixed>>, kecamatans: array<int, array<string, mixed>>, riskMap: array<string, array<string, mixed>>}
      */
     private function buildPayload(?int $kecamatanId = null): array

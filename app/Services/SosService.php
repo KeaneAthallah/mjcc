@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Events\ResponderLocationUpdated;
+use App\Events\SosCreated;
+use App\Events\SosUpdated;
 use App\Models\ActivityLog;
 use App\Models\ResponderLocation;
 use App\Models\SosAlert;
@@ -156,6 +159,8 @@ class SosService
 
         $this->notifications->notifyRelevantResponders($sos);
 
+        SosCreated::dispatch($sos, $user->id);
+
         return $sos;
     }
 
@@ -233,7 +238,11 @@ class SosService
                 'constraint_reason' => $reason,
             ]);
 
-            return $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+            $result = $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+
+            SosUpdated::dispatch($result, $actor->id, SosAlert::STATUS_ON_THE_WAY);
+
+            return $result;
         });
 
         $this->notifications->notifyUser(
@@ -255,13 +264,19 @@ class SosService
         $this->assertCanTransition($sos, SosAlert::STATUS_CANCELLED);
 
         return DB::transaction(function () use ($sos, $actor): SosAlert {
+            $previousStatus = $sos->status;
+
             $sos->update([
                 'status' => SosAlert::STATUS_CANCELLED,
             ]);
 
             $this->log($sos, ActivityLog::ACTION_SOS_CANCELLED, $actor, ['status' => $sos->status]);
 
-            return $sos->fresh(['user:id,name,email,role']);
+            $fresh = $sos->fresh(['user:id,name,email,role']);
+
+            SosUpdated::dispatch($fresh, $actor->id, $previousStatus);
+
+            return $fresh;
         });
     }
 
@@ -298,7 +313,11 @@ class SosService
                 'accepted_by' => $responder->id,
             ]);
 
-            return $fresh->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+            $result = $fresh->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+
+            SosUpdated::dispatch($result, $responder->id, SosAlert::STATUS_ACTIVE);
+
+            return $result;
         });
     }
 
@@ -316,6 +335,8 @@ class SosService
         $this->assertCanTransition($sos, SosAlert::STATUS_ON_THE_WAY);
 
         return DB::transaction(function () use ($sos, $responder): SosAlert {
+            $previousStatus = $sos->status;
+
             $sos->update([
                 'status' => SosAlert::STATUS_ON_THE_WAY,
             ]);
@@ -324,7 +345,11 @@ class SosService
                 'status' => $sos->status,
             ]);
 
-            return $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+            $fresh = $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+
+            SosUpdated::dispatch($fresh, $responder->id, $previousStatus);
+
+            return $fresh;
         });
     }
 
@@ -342,6 +367,8 @@ class SosService
         $this->assertCanTransition($sos, SosAlert::STATUS_ARRIVED);
 
         return DB::transaction(function () use ($sos, $responder): SosAlert {
+            $previousStatus = $sos->status;
+
             $sos->update([
                 'status' => SosAlert::STATUS_ARRIVED,
             ]);
@@ -350,7 +377,11 @@ class SosService
                 'status' => $sos->status,
             ]);
 
-            return $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+            $fresh = $sos->fresh(['user:id,name,email,role', 'acceptedBy:id,name']);
+
+            SosUpdated::dispatch($fresh, $responder->id, $previousStatus);
+
+            return $fresh;
         });
     }
 
@@ -359,12 +390,16 @@ class SosService
      */
     public function updateResponderLocation(int $sosId, User $responder, float $lat, float $lng): void
     {
-        ResponderLocation::create([
+        $location = ResponderLocation::create([
             'sos_alert_id' => $sosId,
             'user_id' => $responder->id,
             'latitude' => $lat,
             'longitude' => $lng,
         ]);
+
+        $location->load('user:id,name,responder_type');
+
+        ResponderLocationUpdated::dispatch($location, $sosId);
     }
 
     /**
@@ -449,6 +484,8 @@ class SosService
         bool $resolved = false,
     ): SosAlert {
         return DB::transaction(function () use ($sos, $status, $message, $actor, $action, $defaultMessage, $resolved): SosAlert {
+            $previousStatus = $sos->status;
+
             $sos->update([
                 'status' => $status,
                 'responded_by' => $actor->id,
@@ -463,7 +500,11 @@ class SosService
                 'response_message' => $sos->response_message,
             ]);
 
-            return $sos->fresh(['user:id,name,email,role']);
+            $fresh = $sos->fresh(['user:id,name,email,role']);
+
+            SosUpdated::dispatch($fresh, $actor->id, $previousStatus);
+
+            return $fresh;
         });
     }
 

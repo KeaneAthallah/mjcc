@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CommandAlertChanged;
 use App\Models\ActivityLog;
 use App\Models\CommandAlert;
 use App\Models\Kecamatan;
@@ -78,6 +79,8 @@ class CommandAlertController extends Controller
             ['status' => $request->status],
             $request,
         );
+
+        CommandAlertChanged::dispatch($alert->id, $alert->status);
 
         return redirect()->back()
             ->with('success', "Status alert diperbarui menjadi {$alert->statusLabel()}.");
